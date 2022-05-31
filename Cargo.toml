@@ -1,0 +1,29 @@
+[package]
+name = "nixos-conf-editor"
+version = "0.0.1"
+edition = "2021"
+default-run = "nixos-conf-editor"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.4.7" }
+adw = { package = "libadwaita", version = "0.1.1" }
+sourceview5 = { version = "0.4.1", features = [ "gtk_v4_6" ] }
+relm4 = { version = "0.4.4", features = [ "macros", "libadwaita", "tokio-rt" ] }
+relm4-components = "0.4.4"
+tracker = "0.1.1"
+tokio = { version = "1.18.2", features = ["rt", "macros", "time", "rt-multi-thread", "sync" ] }
+
+serde_json = "1.0.81"
+serde = { version = "1.0.137", features = ["derive"] }
+
+nix-editor = "0.2.9"
+
+html2pango = "0.4.1"
+pandoc = "0.8.9"
+
+brotli = "3.3.4"
+curl = "0.4.43"
+
+[workspace]
+members = [ ".", "nce-helper" ]
+default-members = [ ".", "nce-helper" ]

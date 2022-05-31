@@ -1,0 +1,7 @@
+/target
+*.json
+*.br
+*.txt
+crf
+.vscode
+shell.nix
