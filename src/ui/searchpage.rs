@@ -41,7 +41,6 @@ impl ComponentUpdate<AppModel> for SearchPageModel {
         self.reset();        
         match msg {
             SearchPageMsg::Search(query) => {
-                println!("Searching {}", query);
                 self.oplst.clear();
                 let q = query.split(' ');
                 let mut sortedoptions = self.options.clone();

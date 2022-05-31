@@ -76,7 +76,6 @@ impl ComponentUpdate<AppModel> for OptPageModel {
             }
             OptPageMsg::ResetConf => {
                 let conf = self.conf.clone();
-                println!("Resetting to {}", conf);
                 self.conf.clear();
                 self.set_conf(conf.clone());
                 self.set_modifiedconf(conf);

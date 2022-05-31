@@ -56,7 +56,6 @@ impl ComponentUpdate<AppModel> for PrefModel {
         self.reset();
         match msg {
             PrefMsg::Show(confpath, flake) => {
-                println!("PrefModel::update: Show {}", confpath);
                 self.set_confpath(confpath.clone());
                 self.set_flake(flake.clone());
                 self.set_flakeselected(flake.is_some());
@@ -68,8 +67,6 @@ impl ComponentUpdate<AppModel> for PrefModel {
             PrefMsg::Close => {
                 if !self.confpath.eq(&self.origconfpath) || !self.flake.eq(&self.origflake) {
                     send!(parent_sender, AppMsg::SetConfPath(self.confpath.clone(), self.flake.clone()));
-                } else {
-                    println!("Skipping reload")
                 }
                 self.hidden = true;
             }
@@ -81,7 +78,6 @@ impl ComponentUpdate<AppModel> for PrefModel {
                 send!(sender, PrefMsg::UpdateConfPath(s));
             }
             PrefMsg::UpdateFlake(s) => {
-                println!("Update flake {:?}", s);
                 self.set_flake(s);
             }
             PrefMsg::FlakeSelected(b) => {

@@ -127,7 +127,6 @@ impl AppUpdate for AppModel {
                 send!(components.welcome.sender(), WelcomeMsg::Show);
             }
             AppMsg::InitialLoad(x) => {
-                println!("InitialLOAD. Configpath {}", self.configpath);
                 self.set_data(x.data);
                 self.set_tree(x.tree);
                 self.set_conf(x.conf);
@@ -156,7 +155,6 @@ impl AppUpdate for AppModel {
                 self.set_busy(true);
                 self.set_page(Page::Loading);
                 self.set_configpath(s.clone());
-                println!("SetConfPath {}", s);
                 self.set_flake(b.clone());
                 components.windowloading.sender().blocking_send(WindowAsyncHandlerMsg::SetConfig(s, b)).unwrap();
             }

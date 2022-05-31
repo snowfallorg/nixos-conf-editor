@@ -20,7 +20,6 @@ pub fn checkcache() -> Result<(), Box<dyn Error>> {
     if !Path::is_dir(Path::new(&cachedir))
         || !Path::is_file(Path::new(&format!("{}/version.json", &cachedir)))
     {
-        println!("Updating cache");
         setupcache(version)?;
         let mut newver = fs::File::create(format!("{}/version.json", &cachedir))?;
         newver.write_all(&vout.stdout)?;
@@ -33,13 +32,7 @@ pub fn checkcache() -> Result<(), Box<dyn Error>> {
         .as_str()
         .unwrap();
 
-    if version != oldversion {
-        println!("Out of date, updating cache");
-        setupcache(version)?;
-        let mut newver = fs::File::create(format!("{}/version.json", &cachedir))?;
-        newver.write_all(&vout.stdout)?;
-    } else if !Path::is_file(Path::new(&format!("{}/options.json", &cachedir))) {
-        println!("No options.json, updating cache");
+    if version != oldversion || !Path::is_file(Path::new(&format!("{}/options.json", &cachedir))){
         setupcache(version)?;
         let mut newver = fs::File::create(format!("{}/version.json", &cachedir))?;
         newver.write_all(&vout.stdout)?;

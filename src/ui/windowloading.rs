@@ -55,7 +55,6 @@ impl MessageHandler<AppModel> for WindowAsyncHandler {
                                     send!(parent_sender, AppMsg::InitialLoad(x))
                                 }
                                 Err(_) => {
-                                    println!("GOT ERROR");
                                     send!(parent_sender, AppMsg::LoadError(String::from("Error loading configuration file"), format!("<tt>{}</tt> may be an invalid configuration file", path)))
                                 }
                             }
