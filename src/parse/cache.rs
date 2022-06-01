@@ -1,6 +1,6 @@
 // Backup https://channels.nixos.org/nixos-22.05/options.json.br
 
-use std::{env, process::Command, path::Path, fs::{self, File}, io::{Write, Read}, error::Error};
+use std::{env, process::Command, path::Path, fs::{self, File}, io::{Write, Read, self, Cursor}, error::Error};
 use curl::easy::Easy;
 use serde_json::Value;
 
@@ -10,12 +10,18 @@ pub fn checkcache() -> Result<(), Box<dyn Error>> {
 
     let vout = Command::new("nixos-version")
         .arg("--json")
-        .output()
-        .unwrap();
+        .output()?;
     let data: Value =
         serde_json::from_str(&String::from_utf8_lossy(&vout.stdout))?;
 
-    let version = data.as_object().unwrap()["nixosVersion"].as_str().unwrap();
+    let vererr = Err(Box::new(io::Error::new(io::ErrorKind::InvalidData, "Failed to find version")));
+    let version = match data.as_object() {
+        Some(x) => match x["nixosVersion"].as_str() {
+            Some(y) => y,
+            None => return vererr.unwrap(),
+        },
+        None => return vererr.unwrap(),
+    };
 
     if !Path::is_dir(Path::new(&cachedir))
         || !Path::is_file(Path::new(&format!("{}/version.json", &cachedir)))
@@ -28,9 +34,13 @@ pub fn checkcache() -> Result<(), Box<dyn Error>> {
     let file = fs::read_to_string(format!("{}/version.json", cachedir))?;
     let olddata: Value = serde_json::from_str(&file)?;
 
-    let oldversion = olddata.as_object().unwrap()["nixosVersion"]
-        .as_str()
-        .unwrap();
+    let oldversion = match olddata.as_object() {
+        Some(x) => match x["nixosVersion"].as_str() {
+            Some(y) => y,
+            None => return vererr.unwrap(),
+        },
+        None => return vererr.unwrap(),
+    };
 
     if version != oldversion || !Path::is_file(Path::new(&format!("{}/options.json", &cachedir))){
         setupcache(version)?;
@@ -62,7 +72,7 @@ fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
     let cachedir = format!("{}/.cache/nixos-conf-editor", env::var("HOME")?);
     fs::create_dir_all(&cachedir).expect("Failed to create cache directory");
     let url = format!(
-        "https://releases.nixos.org/nixos/{}/nixos-{}/options.json.br",
+        "https://releases.nixos.org/nixos/{}/nixos-a{}/options.json.br",
         relver, dlver
     );
 
@@ -77,7 +87,27 @@ fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
                 dst.extend_from_slice(data);
                 Ok(data.len())
             })?;
-        transfer.perform()?
+        transfer.perform()?;
+    }
+
+    if easy.response_code()? == 404 {
+        let url = format!("https://channels.nixos.org/nixos-{}/options.json.br", relver);
+        easy = Easy::new();
+        dst = Vec::new();
+        easy.url(&url)?;
+        easy.follow_location(true)?;
+        {
+            let mut transfer = easy.transfer();
+            transfer
+                .write_function(|data| {
+                    dst.extend_from_slice(data);
+                    Ok(data.len())
+                })?;
+            transfer.perform()?;
+        }
+        if easy.response_code()? == 404 {
+            return Err(Box::new(io::Error::new(io::ErrorKind::InvalidData, "Failed to download options.json")));
+        }
     }
 
     {
@@ -93,7 +123,7 @@ fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
                     if let std::io::ErrorKind::Interrupted = e.kind() {
                         continue;
                     }
-                    panic!("{}", e);
+                    return Err(Box::new(e));
                 }
                 Ok(size) => {
                     if size == 0 {

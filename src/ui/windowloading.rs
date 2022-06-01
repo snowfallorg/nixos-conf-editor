@@ -47,6 +47,7 @@ impl MessageHandler<AppModel> for WindowAsyncHandler {
                                 Ok(_) => {},
                                 Err(_) => {
                                     send!(parent_sender, AppMsg::LoadError(String::from("Could not load cache"), String::from("Try connecting to the internet or launching the application again")));
+                                    return
                                 }
                             }
 
