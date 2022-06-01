@@ -42,10 +42,7 @@ pub fn checkcache() -> Result<(), Box<dyn Error>> {
 
 fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
     let mut relver = version.split('.').collect::<Vec<&str>>()[0..2].join(".");
-    if &relver[0..5] == "22.11" {
-        relver = "unstable".to_string();
-    }
-
+    
     let vout = Command::new("nix-instantiate")
         .arg("<nixpkgs/lib>")
         .arg("-A")
@@ -53,9 +50,14 @@ fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
         .arg("--eval")
         .arg("--json")
         .output()?;
+
     let dlver = String::from_utf8_lossy(&vout.stdout)
         .to_string()
         .replace('"', "");
+
+    if dlver.len() >= 8 && &dlver[5..8] == "pre" {
+        relver = "unstable".to_string();
+    }
 
     let cachedir = format!("{}/.cache/nixos-conf-editor", env::var("HOME")?);
     fs::create_dir_all(&cachedir).expect("Failed to create cache directory");
@@ -63,11 +65,6 @@ fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
         "https://releases.nixos.org/nixos/{}/nixos-{}/options.json.br",
         relver, dlver
     );
-
-    /*if Path::is_file(Path::new(&format!("{}/options.json", &cachedir))) {
-        fs::remove_file(Path::new(&format!("{}/options.json", &cachedir)))
-            .expect("Failed to remove file");
-    }*/
 
     let mut dst = Vec::new();
     let mut easy = Easy::new();
