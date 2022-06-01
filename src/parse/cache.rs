@@ -26,7 +26,7 @@ pub fn checkcache() -> Result<(), Box<dyn Error>> {
     if !Path::is_dir(Path::new(&cachedir))
         || !Path::is_file(Path::new(&format!("{}/version.json", &cachedir)))
     {
-        setupcache(version)?;
+        setupcache()?;
         let mut newver = fs::File::create(format!("{}/version.json", &cachedir))?;
         newver.write_all(&vout.stdout)?;
     }
@@ -43,16 +43,15 @@ pub fn checkcache() -> Result<(), Box<dyn Error>> {
     };
 
     if version != oldversion || !Path::is_file(Path::new(&format!("{}/options.json", &cachedir))){
-        setupcache(version)?;
+        setupcache()?;
         let mut newver = fs::File::create(format!("{}/version.json", &cachedir))?;
         newver.write_all(&vout.stdout)?;
     }
     Ok(())
 }
 
-fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
-    let mut relver = version.split('.').collect::<Vec<&str>>()[0..2].join(".");
-    
+fn setupcache() -> Result<(), Box<dyn Error>> {
+
     let vout = Command::new("nix-instantiate")
         .arg("<nixpkgs/lib>")
         .arg("-A")
@@ -60,11 +59,13 @@ fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
         .arg("--eval")
         .arg("--json")
         .output()?;
-
+    
     let dlver = String::from_utf8_lossy(&vout.stdout)
         .to_string()
         .replace('"', "");
 
+    let mut relver = dlver.split('.').collect::<Vec<&str>>().join(".")[0..5].to_string();
+    
     if dlver.len() >= 8 && &dlver[5..8] == "pre" {
         relver = "unstable".to_string();
     }
@@ -72,7 +73,7 @@ fn setupcache(version: &str) -> Result<(), Box<dyn Error>> {
     let cachedir = format!("{}/.cache/nixos-conf-editor", env::var("HOME")?);
     fs::create_dir_all(&cachedir).expect("Failed to create cache directory");
     let url = format!(
-        "https://releases.nixos.org/nixos/{}/nixos-a{}/options.json.br",
+        "https://releases.nixos.org/nixos/{}/nixos-{}/options.json.br",
         relver, dlver
     );
 
