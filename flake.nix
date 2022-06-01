@@ -22,12 +22,17 @@
             root = ./.;
             copyLibs = true;
             buildInputs = with pkgs; [
-              openssl
-              pkgconfig
+              cairo
+              gdk-pixbuf
+              gobject-introspection
+              graphene
               gtk4
-              libadwaita
               gtksourceview5
+              libadwaita
+              openssl
               pandoc
+              pango
+              pkgconfig
               wrapGAppsHook
             ];
             postInstall = ''
@@ -50,7 +55,22 @@
           devShells = {
             default = pkgs.mkShell {
               nativeBuildInputs = 
-                with pkgs; [ rustc cargo openssl pkgconfig ] ;
+                with pkgs; [
+                  rustc
+                  cargo
+                  cairo
+                  gdk-pixbuf
+                  gobject-introspection
+                  graphene
+                  gtk4
+                  gtksourceview5
+                  libadwaita
+                  openssl
+                  pandoc
+                  pango
+                  pkgconfig
+                  wrapGAppsHook
+               ] ;
             };
           };
         }
