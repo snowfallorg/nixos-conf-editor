@@ -30,6 +30,10 @@
               pandoc
               wrapGAppsHook
             ];
+            postInstall = ''
+               wrapProgram $out/bin/nixos-conf-editor --prefix PATH : '${nixpkgs.lib.makeBinPath [ pkgs.pandoc ]}'
+            '';
+
           };
 
           # `nix build`
