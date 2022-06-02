@@ -51,14 +51,24 @@ impl MessageHandler<AppModel> for WindowAsyncHandler {
                                 }
                             }
 
-                            match setupfiles(&path) {
-                                Ok(x) => {
-                                    send!(parent_sender, AppMsg::InitialLoad(x))
-                                }
+
+                            let (data, tree) = match read() {
+                                Ok(x) => x,
                                 Err(_) => {
-                                    send!(parent_sender, AppMsg::LoadError(String::from("Error loading configuration file"), format!("<tt>{}</tt> may be an invalid configuration file", path)))
+                                    send!(parent_sender, AppMsg::LoadError(String::from("Could not load options"), String::from("Try launching the application again")));
+                                    return
                                 }
-                            }
+                            };
+
+                            let conf = match parseconfig(&path) {
+                                Ok(x) => x,
+                                Err(_) => {
+                                    send!(parent_sender, AppMsg::LoadError(String::from("Error loading configuration file"), format!("<tt>{}</tt> may be an invalid configuration file", path)));
+                                    return
+                                }
+                            };
+                            send!(parent_sender, AppMsg::InitialLoad(LoadValues { data, tree, conf }))
+
                         }
                         WindowAsyncHandlerMsg::GetConfigPath => {
                             if let Ok(false) = configexists() {
@@ -99,12 +109,6 @@ impl MessageHandler<AppModel> for WindowAsyncHandler {
     fn sender(&self) -> Self::Sender {
         self.sender.clone()
     }
-}
-
-fn setupfiles(configpath: &str) -> Result<LoadValues, Box<dyn Error>> {
-    let (data, tree) = read()?;
-    let conf = parseconfig(configpath)?;
-    Ok(LoadValues { data, tree, conf })
 }
 
 fn configvalues() -> Result<(String, Option<String>), Box<dyn Error>> {
