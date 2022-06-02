@@ -176,19 +176,15 @@ impl Widgets<PrefModel, AppModel> for PrefWidgets {
                 ("Open", gtk::ResponseType::Accept),
             ],
         );
-        {
-            let sender = sender.clone();
-            filechooser.connect_response(move |x, _| {
-                x.hide();
-                send!(sender, PrefMsg::SetBusy(false));
-            });
-            filechooser.set_default_size(1500, 700);
-            filechooser.widget_for_response(gtk::ResponseType::Accept).unwrap().add_css_class("suggested-action");
-        }
+        filechooser.set_default_size(1500, 700);
+        filechooser.widget_for_response(gtk::ResponseType::Accept).unwrap().add_css_class("suggested-action");
         confentry.connect_icon_release(move |_, _| {
             let sender = sender.clone();
             send!(sender, PrefMsg::SetBusy(true));
             filechooser.run_async(move |obj, r| {
+                obj.hide();
+                obj.destroy();
+                send!(sender, PrefMsg::SetBusy(false));
                 if let Some(x) = obj.file() {
                     if let Some(y) = x.path() {
                         if r == gtk::ResponseType::Accept {
@@ -314,19 +310,19 @@ impl Widgets<WelcomeModel, AppModel> for WelcomeWidgets {
                 ("Open", gtk::ResponseType::Accept),
             ],
         );
-        filechooser.connect_response(|x, _| {
-            x.hide();
-        });
-        filechooser.set_modal(true);
+        filechooser.set_default_size(1500, 700);
+        filechooser.widget_for_response(gtk::ResponseType::Accept).unwrap().add_css_class("suggested-action");
         confentry.connect_icon_release(move |_, _| {
             let sender = sender.clone();
             filechooser.run_async(move |obj, _| {
+                obj.hide();
+                obj.destroy();
                 if let Some(x) = obj.file() {
                     if let Some(y) = x.path() {
                         send!(sender, WelcomeMsg::UpdateConfPath(y.to_string_lossy().to_string()));
                     }
                 }
-            });           
+            });
         });
         btn.grab_focus();
     }

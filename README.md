@@ -9,6 +9,7 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 ## To Do's currently unimplemented
 
 - Handle `<name>` and `*` fields in options
+- Handle files in `imports`
 - Add easy widgets for modifying simple options like booleans and strings
 - Add an icon
 - Package polkit policy file
