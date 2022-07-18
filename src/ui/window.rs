@@ -434,6 +434,7 @@ impl AppUpdate for AppModel {
                         pos.to_vec(),
                         newref.to_vec(),
                         conf,
+                        self.data.keys().map(|x| x.to_string()).collect::<Vec<String>>(),
                     ))
                     .unwrap();
                 self.options.clear();

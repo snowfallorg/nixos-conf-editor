@@ -17,7 +17,7 @@ pub struct SaveAsyncHandler {
 
 #[derive(Debug)]
 pub enum SaveAsyncHandlerMsg {
-    SaveCheck(String, String, String),
+    SaveCheck(String, String, String, Vec<String>),
 }
 
 impl MessageHandler<OptPageModel> for SaveAsyncHandler {
@@ -39,12 +39,12 @@ impl MessageHandler<OptPageModel> for SaveAsyncHandler {
                 tokio::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                     match msg {
-                        SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf) => {
+                        SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf, alloptions) => {
                             info!("Recived SaveCheck message");
                             debug!("opt: {}\nrefopt: {}", opt, refopt);
                             // For users.users.<name>.autoSubUidGidRange
                             // (options.users.users.type.getSubOptions []).autoSubUidGidRange.type.check
-                            let checkcmd = if refopt.contains("*") || refopt.contains("<name>"){
+                            let checkcmd =  {
                                 let p = refopt.split('.').collect::<Vec<_>>();
                                 let mut r: Vec<Vec<String>> = vec![vec![]];
                                 let mut indexvec: Vec<usize> = vec![];
@@ -56,6 +56,10 @@ impl MessageHandler<OptPageModel> for SaveAsyncHandler {
                                             indexvec.push(x);
                                         }
                                         j += 1;
+                                    } else if alloptions.contains(&p[..i].join(".")) && i+1 < p.len() /* Check if option exists */ {
+                                        r.push(vec![]);
+                                        j += 1;
+                                        r[j].push(p[i].to_string());
                                     } else {
                                         r[j].push(p[i].to_string());
                                     }
@@ -65,8 +69,6 @@ impl MessageHandler<OptPageModel> for SaveAsyncHandler {
                                     s = format!("({}.type.getSubOptions []).{}", s, y.join("."));
                                 }
                                 format!("{}.type.check", s)
-                            } else {
-                                format!("options.{}.type.check", opt)
                             };
                             let output = Command::new("nix-instantiate")
                                     .arg("--eval")

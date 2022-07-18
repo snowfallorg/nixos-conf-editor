@@ -8,7 +8,7 @@ use super::window::*;
 use super::savechecking::*;
 
 pub enum OptPageMsg {
-    UpdateOption(OptionData, Vec<String>, Vec<String>, String),
+    UpdateOption(OptionData, Vec<String>, Vec<String>, String, Vec<String>),
     UpdateConf(String),
     ResetConf,
     SaveConf,
@@ -23,6 +23,7 @@ pub struct OptPageModel {
     pub data: OptionData,
     pub conf: String,
     pub modifiedconf: String,
+    alloptions: Vec<String>,
     scheme: Option<sourceview5::StyleScheme>,
     saving: bool,
 }
@@ -49,6 +50,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
             conf: String::new(),
             modifiedconf: String::new(),
             saving: false,
+            alloptions: parent_model.data.keys().map(|x| x.to_string()).collect::<Vec<String>>(),
             scheme: None,
             tracker: 0,
         }
@@ -63,7 +65,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
     ) {
         self.reset();
         match msg {
-            OptPageMsg::UpdateOption(data, opt, refopt, conf) => {
+            OptPageMsg::UpdateOption(data, opt, refopt, conf, alloptions) => {
                 self.update_conf(|x| x.clear());
                 self.update_modifiedconf(|x| x.clear());
                 self.set_data(data);
@@ -71,6 +73,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
                 self.set_refopt(refopt);
                 self.set_conf(conf.clone());
                 self.set_modifiedconf(conf);
+                self.set_alloptions(alloptions);
             }
             OptPageMsg::UpdateConf(conf) => {
                 if conf != self.modifiedconf {
@@ -97,7 +100,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
                 } else {
                     self.set_saving(true);
                     parent_sender.send(AppMsg::SetBusy(true)).unwrap();
-                    components.async_handler.sender().blocking_send(SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf)).expect("Could not send message to async handler");
+                    components.async_handler.sender().blocking_send(SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf, self.alloptions.to_vec())).expect("Could not send message to async handler");
                 }
             }
             OptPageMsg::DoneSaving(save, message) => {
