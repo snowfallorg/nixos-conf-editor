@@ -16,7 +16,7 @@ tokio = { version = "1.19.2", features = ["rt", "macros", "time", "rt-multi-thre
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
-nix-editor = { git = "https://github.com/vlinkz/nix-editor" }
+nix-editor = "0.2.12"
 
 html2pango = "0.4"
 pandoc = "0.8"
