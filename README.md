@@ -8,7 +8,6 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 
 ## To Do's currently unimplemented
 
-- Handle `<name>` and `*` fields in options
 - Handle files in `imports`
 - Add easy widgets for modifying simple options like booleans and strings
 - Add an icon
@@ -21,18 +20,53 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 - Search options
 - Indicate which options are set 
 - Rebuild system and show errors
+- Handle `<name>` and `*` fields in options
 
-## Usage
-This tool is extremely new, so there will likely be lots of errors. If you run into an error, please report the issue!
+## NixOS Installation
 
-On an flakes enabled system:
+```bash
+git clone https://github.com/vlinkz/nixos-conf-editor
+nix-env -f nixos-conf-editor -i nixos-conf-editor 
+```
+
+## Declarative Installation
+
+Head of `configuration.nix`
+
+```nix
+let
+  nixos-conf-editor = (import (pkgs.fetchFromGitHub {
+    owner = "vlinkz";
+    repo = "nixos-conf-editor";
+    rev = "0.0.2";
+    sha256 = "0000000000000000000000000000000000000000000000000000";
+  })).default;
+in 
+```
+Packages:
+
+```nix
+environment.systemPackages =
+with pkgs; [
+  nixos-conf-editor
+  # rest of your packages
+];
+```
+
+## Single run on an flakes enabled system:
 ```bash
 nix run github:vlinkz/nixos-conf-editor
 ```
 
-On non-flakes enabled system:
+## Single run on non-flakes enabled system:
 ```bash
 nix --extra-experimental-features "nix-command flakes" run github:vlinkz/nixos-conf-editor
+```
+
+## Debugging
+
+```bash
+RUST_LOG=trace nixos-conf-editor
 ```
 
 # Screenshots
