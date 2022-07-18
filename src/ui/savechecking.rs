@@ -6,6 +6,7 @@ use sourceview5::prelude::*;
 use tokio::runtime::{Builder, Runtime};
 use tokio::sync::mpsc::{channel, Sender as TokioSender};
 use std::process::Command;
+use log::{debug, info, trace, warn};
 use super::optionpage::*;
 use super::window::{AppModel, AppMsg};
 
@@ -16,7 +17,7 @@ pub struct SaveAsyncHandler {
 
 #[derive(Debug)]
 pub enum SaveAsyncHandlerMsg {
-    SaveCheck(String, String),
+    SaveCheck(String, String, String),
 }
 
 impl MessageHandler<OptPageModel> for SaveAsyncHandler {
@@ -38,13 +39,41 @@ impl MessageHandler<OptPageModel> for SaveAsyncHandler {
                 tokio::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                     match msg {
-                        SaveAsyncHandlerMsg::SaveCheck(opt, conf) => {
+                        SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf) => {
+                            info!("Recived SaveCheck message");
+                            debug!("opt: {}\nrefopt: {}", opt, refopt);
+                            // For users.users.<name>.autoSubUidGidRange
+                            // (options.users.users.type.getSubOptions []).autoSubUidGidRange.type.check
+                            let checkcmd = if refopt.contains("*") || refopt.contains("<name>"){
+                                let p = refopt.split('.').collect::<Vec<_>>();
+                                let mut r: Vec<Vec<String>> = vec![vec![]];
+                                let mut indexvec: Vec<usize> = vec![];
+                                let mut j = 0;
+                                for i in 0..p.len() {
+                                    if p[i] == "*" || p[i] == "<name>" {
+                                        r.push(vec![]);
+                                        if let Ok(x) = opt.split('.').collect::<Vec<_>>()[i].parse::<usize>() {
+                                            indexvec.push(x);
+                                        }
+                                        j += 1;
+                                    } else {
+                                        r[j].push(p[i].to_string());
+                                    }
+                                }
+                                let mut s = format!("options.{}", r[0].join("."));
+                                for y in r[1..].iter() {
+                                    s = format!("({}.type.getSubOptions []).{}", s, y.join("."));
+                                }
+                                format!("{}.type.check", s)
+                            } else {
+                                format!("options.{}.type.check", opt)
+                            };
                             let output = Command::new("nix-instantiate")
-                                .arg("--eval")
-                                .arg("--expr")
-                                .arg(format!("with import <nixpkgs/nixos> {{}}; options.{}.type.check ({})", opt, conf))
-                                .output();
-                            let (b, s) = match output {
+                                    .arg("--eval")
+                                    .arg("--expr")
+                                    .arg(format!("with import <nixpkgs/nixos> {{}}; {} ({})", checkcmd, conf))
+                                    .output();
+                                let (b, s) = match output {
                                 Ok(output) => {
                                     if output.status.success() {
                                         let output = String::from_utf8(output.stdout).unwrap();
@@ -57,8 +86,8 @@ impl MessageHandler<OptPageModel> for SaveAsyncHandler {
                                 Err(e) => {
                                     (false, e.to_string())
                                 }
-                            };
-                            send!(parent_sender, OptPageMsg::DoneSaving(b, s));
+                                };
+                                send!(parent_sender, OptPageMsg::DoneSaving(b, s));
                         }
                     }
                 });

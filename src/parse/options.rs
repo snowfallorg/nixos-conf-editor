@@ -54,7 +54,7 @@ fn buildtree(ops: Vec<&str>) -> Result<AttrTree, Box<dyn Error>> {
                 if tree.attributes.get(attr[0]).is_none() {
                     tree.attributes.insert(attr[0].to_string(), AttrTree { attributes: HashMap::new(), options: vec![] });
                 }
-                buildtree_child(tree.attributes.get_mut(attr[0]).unwrap(), attr[1..].to_vec());
+                buildtree_child(tree.attributes.get_mut(attr[0]).unwrap(), attr[1..].to_vec())?;
             },
             Ordering::Equal => {
                 tree.options.push(attr[0].to_string())

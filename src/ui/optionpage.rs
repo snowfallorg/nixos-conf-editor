@@ -8,7 +8,7 @@ use super::window::*;
 use super::savechecking::*;
 
 pub enum OptPageMsg {
-    UpdateOption(OptionData, Vec<String>, String),
+    UpdateOption(OptionData, Vec<String>, Vec<String>, String),
     UpdateConf(String),
     ResetConf,
     SaveConf,
@@ -19,6 +19,7 @@ pub enum OptPageMsg {
 #[tracker::track]
 pub struct OptPageModel {
     pub opt: Vec<String>,
+    pub refopt: Vec<String>,
     pub data: OptionData,
     pub conf: String,
     pub modifiedconf: String,
@@ -43,6 +44,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
     fn init_model(parent_model: &AppModel) -> Self {
         OptPageModel {
             opt: parent_model.position.clone(),
+            refopt: parent_model.refposition.clone(),
             data: OptionData::default(),
             conf: String::new(),
             modifiedconf: String::new(),
@@ -61,11 +63,12 @@ impl ComponentUpdate<AppModel> for OptPageModel {
     ) {
         self.reset();
         match msg {
-            OptPageMsg::UpdateOption(data, pos, conf) => {
+            OptPageMsg::UpdateOption(data, opt, refopt, conf) => {
                 self.update_conf(|x| x.clear());
                 self.update_modifiedconf(|x| x.clear());
                 self.set_data(data);
-                self.set_opt(pos);
+                self.set_opt(opt);
+                self.set_refopt(refopt);
                 self.set_conf(conf.clone());
                 self.set_modifiedconf(conf);
             }
@@ -83,6 +86,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
             }
             OptPageMsg::SaveConf => {
                 let opt = self.opt.join(".");
+                let refopt = self.refopt.join(".");
                 let mut conf = self.modifiedconf.clone();
                 while conf.ends_with('\n') || conf.ends_with(' ') {
                     conf.pop();
@@ -93,7 +97,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
                 } else {
                     self.set_saving(true);
                     parent_sender.send(AppMsg::SetBusy(true)).unwrap();
-                    components.async_handler.sender().blocking_send(SaveAsyncHandlerMsg::SaveCheck(opt, conf)).expect("Could not send message to async handler");
+                    components.async_handler.sender().blocking_send(SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf)).expect("Could not send message to async handler");
                 }
             }
             OptPageMsg::DoneSaving(save, message) => {

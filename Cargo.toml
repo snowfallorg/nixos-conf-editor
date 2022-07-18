@@ -5,25 +5,28 @@ edition = "2021"
 default-run = "nixos-conf-editor"
 
 [dependencies]
-gtk = { package = "gtk4", version = "0.4.7" }
-adw = { package = "libadwaita", version = "0.1.1" }
-sourceview5 = { version = "0.4.1", features = [ "gtk_v4_6" ] }
-relm4 = { version = "0.4.4", features = [ "macros", "libadwaita", "tokio-rt" ] }
+gtk = { package = "gtk4", version = "0.4.8" }
+adw = { package = "libadwaita", version = "0.1.1", features = ["gtk_v4_6"] }
+sourceview5 = { version = "0.4.2", features = ["gtk_v4_6"] }
+relm4 = { version = "0.4.4", features = ["macros", "libadwaita", "tokio-rt"] }
 relm4-components = "0.4.4"
 tracker = "0.1.1"
-tokio = { version = "1.18.2", features = ["rt", "macros", "time", "rt-multi-thread", "sync" ] }
+tokio = { version = "1.19.2", features = ["rt", "macros", "time", "rt-multi-thread", "sync"] }
 
-serde_json = "1.0.81"
-serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
-nix-editor = "0.2.9"
+nix-editor = { git = "https://github.com/vlinkz/nix-editor" }
 
-html2pango = "0.4.1"
-pandoc = "0.8.9"
+html2pango = "0.4"
+pandoc = "0.8"
 
-brotli = "3.3.4"
-curl = "0.4.43"
+brotli = "3.3"
+curl = "0.4"
+
+log = "0.4"
+pretty_env_logger = "0.4"
 
 [workspace]
-members = [ ".", "nce-helper" ]
-default-members = [ ".", "nce-helper" ]
+members = [".", "nce-helper"]
+default-members = [".", "nce-helper"]

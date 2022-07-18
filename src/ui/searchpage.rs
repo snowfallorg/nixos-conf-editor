@@ -1,11 +1,11 @@
 use adw::prelude::*;
 use relm4::{factory::*, *};
-use super::{window::*, searchfactory::SearchOption};
+use super::{window::*, searchfactory::SearchOption, searchentry::SearchEntryModel};
 
 #[derive(Debug)]
 pub enum SearchPageMsg {
     Search(String),
-    OpenOption(Vec<String>),
+    OpenOption(Vec<String>, Option<Vec<String>>),
     LoadOptions(Vec<(String, bool)>),
 }
 
@@ -44,7 +44,6 @@ impl ComponentUpdate<AppModel> for SearchPageModel {
                 self.oplst.clear();
                 let q = query.split(' ');
                 let mut sortedoptions = self.options.clone();
-                sortedoptions.sort();
                 sortedoptions.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
                 for opt in sortedoptions {
                     if q.clone().all(|part| opt.0.contains(part)) {
@@ -58,8 +57,12 @@ impl ComponentUpdate<AppModel> for SearchPageModel {
                     }
                 }
             }
-            SearchPageMsg::OpenOption(opt) => {
-                parent_sender.send(AppMsg::OpenOption(opt)).unwrap();
+            SearchPageMsg::OpenOption(opt, refpos) => {
+                if opt.contains(&String::from("*")) || opt.contains(&String::from("<name>")) {
+                    send!(parent_sender, AppMsg::ShowSearchPageEntry(opt));
+                } else {
+                    parent_sender.send(AppMsg::OpenOption(opt.clone(), if let Some(x) = refpos { x } else { opt })).unwrap();
+                }
             }
             SearchPageMsg::LoadOptions(options) => {
                 self.set_options(options);
@@ -84,7 +87,7 @@ impl Widgets<SearchPageModel, AppModel> for SearchPageWidgets {
                             if let Ok(l) = y.clone().downcast::<adw::PreferencesRow>() {
                                 let text = l.title().to_string();
                                 let v = text.split('.').map(|x| x.to_string()).collect::<Vec<String>>();
-                                sender.send(SearchPageMsg::OpenOption(v)).unwrap();
+                                sender.send(SearchPageMsg::OpenOption(v, None)).unwrap();
                             }
                         },
                         factory!(model.oplst),

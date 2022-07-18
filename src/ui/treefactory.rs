@@ -1,12 +1,14 @@
-use adw::prelude::*; //AdwApplicationWindowExt;
-use relm4::{*, factory::*}; //{adw, gtk, send, AppUpdate, Model, RelmApp, Sender, WidgetPlus, Widgets};
+use adw::prelude::*;
+use relm4::{*, factory::*};
 use super::window::*;
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct AttrPos {
     pub value: Vec<String>,
+    pub refvalue: Vec<String>,
     pub configured: bool,
     pub modified: bool,
+    pub replacefor: Option<String>,
 }
 
 #[relm4::factory_prototype(pub)]
@@ -24,6 +26,7 @@ impl FactoryPrototype for AttrPos {
                 set_margin_all: 15,
                 append = &gtk::Label {
                     set_text: &title,
+                    set_use_markup: true,
                 },
                 append = &gtk::Separator {
                     set_hexpand: true,
@@ -39,7 +42,11 @@ impl FactoryPrototype for AttrPos {
     }
 
     fn pre_init() {
-        let title = self.value.last().unwrap_or(&String::new()).to_string();
+        let title = if self.replacefor == Some(String::from("*")) {
+            format!("[<i>{}</i>]", self.value.last().unwrap_or(&String::new()))
+        } else {
+            self.value.last().unwrap_or(&String::new()).to_string()
+        };
     }
 
     fn position(&self, _index: &usize) {}
@@ -48,6 +55,7 @@ impl FactoryPrototype for AttrPos {
 #[derive(Default, Debug, PartialEq)]
 pub struct OptPos {
     pub value: Vec<String>,
+    pub refvalue: Vec<String>,
     pub configured: bool,
     pub modified: bool,
 }
@@ -91,6 +99,7 @@ impl FactoryPrototype for OptPos {
 #[derive(Default, Debug, PartialEq)]
 pub struct AttrBtn {
     pub value: Vec<String>,
+    pub refvalue: Vec<String>,
     pub opt: bool,
 }
 
@@ -106,11 +115,10 @@ impl FactoryPrototype for AttrBtn {
             set_label: &title,
             connect_clicked(sender) => move |_| {
                 if opt {
-                    sender.send(AppMsg::OpenOption(v.to_vec())).unwrap();
+                    sender.send(AppMsg::OpenOption(v.to_vec(), r.to_vec())).unwrap();
                 } else {
-                    sender.send(AppMsg::MoveTo(v.to_vec())).unwrap();
+                    sender.send(AppMsg::MoveTo(v.to_vec(), r.to_vec())).unwrap();
                 }
-                
             }
         }
     }
@@ -119,6 +127,7 @@ impl FactoryPrototype for AttrBtn {
         let opt = self.opt;
         let title = self.value.last().unwrap_or(&String::new()).to_string();
         let v = self.value.to_vec();
+        let r = self.refvalue.to_vec();
     }
 
     fn position(&self, _index: &usize) {}

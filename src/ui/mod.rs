@@ -8,3 +8,5 @@ mod savechecking;
 mod about;
 mod rebuild;
 mod preferencespage;
+mod nameentry;
+mod searchentry;
