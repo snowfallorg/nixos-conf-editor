@@ -1,7 +1,9 @@
 /target
 *.json
 *.br
-*.txt
 crf
 .vscode
 shell.nix
+/build
+TODO
+/src/config.rs

@@ -1,5 +1,6 @@
 use adw::prelude::*;
 use relm4::{Model, ComponentUpdate, Sender, Widgets, send};
+use crate::config;
 
 use super::window::{AppModel, AppMsg};
 
@@ -55,7 +56,8 @@ impl Widgets<AboutModel, AppModel> for AboutWidgets {
             set_copyright: Some("© 2022 Victor Fuentes"),
             set_license_type: gtk::License::MitX11,
             set_program_name: Some("NixOS Configuration Editor"),
-            set_version: Some(env!("CARGO_PKG_VERSION")),
+            set_version: Some(config::VERSION),
+            set_logo_icon_name: Some(config::APP_ID),
             set_sensitive: true,
             connect_close_request => move |_| {
                 send!(sender, AboutMsg::Hide);

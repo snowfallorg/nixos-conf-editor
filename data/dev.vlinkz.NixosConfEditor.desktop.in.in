@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Configuration Editor
+Comment=Configure your NixOS system
+Type=Application
+Exec=nixos-conf-editor
+Terminal=false
+Categories=Settings;System;Utility;
+# Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
+Keywords=Nix;Nixos;nix;nixos;configuration;settings;registry;
+# Translators: Do NOT translate or transliterate this text (this is an icon file name)!
+Icon=@icon@
+StartupNotify=true

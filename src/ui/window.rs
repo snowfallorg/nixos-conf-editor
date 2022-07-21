@@ -970,6 +970,9 @@ pub fn run() {
         nameorstar: AddAttrOptions::None,
         tracker: 0,
     };
-    let app = RelmApp::new(model);
+    let app = RelmApp::with_app(model, adw::Application::new(
+        Some("dev.vlinkz.NixosConfEditor"),
+        adw::gio::ApplicationFlags::empty(),
+    ));
     app.run();
 }

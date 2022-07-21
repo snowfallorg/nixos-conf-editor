@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>@app-id@</id>
+  <metadata_license>CC-BY-SA-4.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>NixOS Configuration Editor</name>
+  <summary>A simple application to manage your NixOS system configuration.</summary>
+  <description>
+    <p>A simple graphical tool for modifying and managing desktop NixOS configurations built with libadwaita, GTK4, and Relm4.</p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/vlinkz/nixos-conf-editor/main/data/screenshots/listviewlight.png</image>
+      <caption>Main window</caption>
+    </screenshot>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/vlinkz/nixos-conf-editor/main/data/screenshots/optionlight2.png</image>
+      <caption>Option Selection</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/vlinkz/nixos-conf-editor</url>
+  <url type="bugtracker">https://github.com/vlinkz/nixos-conf-editor/issues</url>
+  <developer_name>Victor Fuentes</developer_name>
+  <update_contact>vmfuentes64@gmail.com</update_contact>
+  <translation type="gettext">@gettext-package@</translation>
+  <launchable type="desktop-id">@app-id@.desktop</launchable>
+</component>

@@ -5,6 +5,7 @@ use relm4::{
 };
 use sourceview5::prelude::*;
 use std::io::{BufRead, Write};
+use std::path::Path;
 use std::process::*;
 use std::{io::BufReader, process::Command};
 use tokio::runtime::{Builder, Runtime};
@@ -307,15 +308,21 @@ impl MessageHandler<RebuildModel> for RebuildAsyncHandler {
                         RebuildAsyncHandlerMsg::RunRebuild(f, path, flake) => {
                             let exe = match std::env::current_exe() {
                                 Ok(mut e) => {
-                                    e.pop();
+                                    e.pop(); // root/bin
+                                    e.pop(); // root/
+                                    e.push("libexec"); // root/libexec
                                     e.push("nce-helper");
-                                    e.to_string_lossy().to_string()
+                                    let x = e.to_string_lossy().to_string();
+                                    if Path::new(&x).is_file() {
+                                        x
+                                    } else {
+                                        String::from("nce-helper")
+                                    }
                                 },
                                 Err(_) => {
                                     String::from("nce-helper")
                                 }
                             };
-
 
                             let mut writecmd = Command::new("pkexec")
                                 .arg(&exe)

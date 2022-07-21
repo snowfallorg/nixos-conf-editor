@@ -12,7 +12,6 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 - Handle files in `imports`
 - Add easy widgets for modifying simple options like booleans and strings
 - Add an icon
-- Package polkit policy file
 
 ## Things Done
 
@@ -22,6 +21,7 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 - Indicate which options are set 
 - Rebuild system and show errors
 - Handle `<name>` and `*` fields in options
+- Package polkit policy file
 
 ## NixOS Installation
 
@@ -42,7 +42,7 @@ let
     rev = "0.0.2";
     sha256 = "0000000000000000000000000000000000000000000000000000";
   })).default;
-in 
+in
 ```
 Packages:
 
@@ -73,28 +73,28 @@ RUST_LOG=trace nixos-conf-editor
 # Screenshots
 
 <p align="middle">
-  <img src="screenshots/listviewlight.png#gh-light-mode-only"/>
-  <img src="screenshots/listviewdark.png#gh-dark-mode-only"/> 
+  <img src="data/screenshots/listviewlight.png#gh-light-mode-only"/>
+  <img src="data/screenshots/listviewdark.png#gh-dark-mode-only"/> 
 </p>
 
 <p align="middle">
-  <img src="screenshots/optionlight.png#gh-light-mode-only"/>
-  <img src="screenshots/optiondark.png#gh-dark-mode-only"/> 
+  <img src="data/screenshots/optionlight.png#gh-light-mode-only"/>
+  <img src="data/screenshots/optiondark.png#gh-dark-mode-only"/> 
 </p>
 
 <p align="middle">
-  <img src="screenshots/searchlight.png#gh-light-mode-only"/>
-  <img src="screenshots/searchdark.png#gh-dark-mode-only"/> 
+  <img src="data/screenshots/searchlight.png#gh-light-mode-only"/>
+  <img src="data/screenshots/searchdark.png#gh-dark-mode-only"/> 
 </p>
 
 <p align="middle">
-  <img src="screenshots/rebuildlight.png#gh-light-mode-only"/>
-  <img src="screenshots/rebuilddark.png#gh-dark-mode-only"/> 
+  <img src="data/screenshots/rebuildlight.png#gh-light-mode-only"/>
+  <img src="data/screenshots/rebuilddark.png#gh-dark-mode-only"/> 
 </p>
 
 <p align="middle">
-  <img src="screenshots/invalidlight.png#gh-light-mode-only"/>
-  <img src="screenshots/invaliddark.png#gh-dark-mode-only"/> 
+  <img src="data/screenshots/invalidlight.png#gh-light-mode-only"/>
+  <img src="data/screenshots/invaliddark.png#gh-dark-mode-only"/> 
 </p>
 
 [builtwithnix badge]: https://img.shields.io/badge/Built%20With-Nix-41439A?style=flat-square&logo=nixos&logoColor=white

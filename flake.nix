@@ -2,43 +2,18 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     utils.url = "github:numtide/flake-utils";
-    naersk.url = "github:nix-community/naersk";
-    flake-compat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
-    };
   };
 
-  outputs = { self, nixpkgs, utils, naersk, ... }:
+  outputs = { self, nixpkgs, utils, ... }@inputs:
     utils.lib.eachDefaultSystem
       (system:
-       let 
+        let
           name = "nixos-conf-editor";
-          pkgs = import nixpkgs { inherit system; };
-          naersk-lib = naersk.lib."${system}";
-        in rec {
-          packages.${name} = naersk-lib.buildPackage {
-            pname = "${name}";
-            root = ./.;
-            copyLibs = true;
-            buildInputs = with pkgs; [
-              cairo
-              gdk-pixbuf
-              gobject-introspection
-              graphene
-              gtk4
-              gtksourceview5
-              libadwaita
-              openssl
-              pandoc
-              pango
-              pkgconfig
-              wrapGAppsHook
-            ];
-            postInstall = ''
-               wrapProgram $out/bin/nixos-conf-editor --prefix PATH : '${nixpkgs.lib.makeBinPath [ pkgs.pandoc ]}'
-            '';
-
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        rec {
+          packages.${name} = pkgs.callPackage ./default.nix {
+            inherit (inputs);
           };
 
           # `nix build`
@@ -54,7 +29,7 @@
           # `nix develop`
           devShells = {
             default = pkgs.mkShell {
-              nativeBuildInputs = 
+              nativeBuildInputs =
                 with pkgs; [
                   rustc
                   cargo
@@ -70,7 +45,7 @@
                   pango
                   pkgconfig
                   wrapGAppsHook
-               ] ;
+                ];
             };
           };
         }
