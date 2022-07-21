@@ -7,3 +7,5 @@ shell.nix
 /build
 TODO
 /src/config.rs
+/result
+result
