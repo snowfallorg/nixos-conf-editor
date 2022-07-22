@@ -1,7 +1,7 @@
 project(
   'nixos-conf-editor',
   'rust',
-  version: '0.0.2',
+  version: '0.0.3',
   meson_version: '>= 0.59',
   license: 'MIT',
 )

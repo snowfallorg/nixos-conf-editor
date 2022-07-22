@@ -44,7 +44,13 @@
                   pandoc
                   pango
                   pkgconfig
-                  wrapGAppsHook
+                  appstream-glib
+                  polkit
+                  gettext
+                  desktop-file-utils
+                  meson
+                  ninja
+                  wrapGAppsHook4
                 ];
             };
           };
