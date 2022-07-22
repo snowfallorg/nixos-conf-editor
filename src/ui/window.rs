@@ -568,7 +568,11 @@ impl AppUpdate for AppModel {
             }
             AppMsg::EditOpt(opt, value) => {
                 info!("Received AppMsg::EditOpt");
-                self.editedopts.insert(opt, value);
+                if self.conf.get(&opt).is_none() && value.is_empty() {
+                    self.editedopts.remove(&opt);
+                } else {
+                    self.editedopts.insert(opt, value);
+                }
             }
             AppMsg::Rebuild => {
                 info!("Received AppMsg::Rebuild");
