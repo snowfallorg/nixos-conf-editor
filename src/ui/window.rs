@@ -31,7 +31,7 @@ use crate::ui::rebuild::RebuildMsg;
 use crate::ui::searchentry::SearchEntryMsg;
 use crate::ui::windowloading::LoadErrorMsg;
 use adw::prelude::*;
-use log::{debug, error, info, trace};
+use log::*;
 use relm4::{actions::*, factory::*, AppUpdate, Model, RelmApp, Sender, Widgets, *};
 use std::collections::HashMap;
 
@@ -722,7 +722,7 @@ impl Widgets<AppModel, ()> for AppWidgets {
     view! {
         main_window = adw::ApplicationWindow {
             set_default_width: 1000,
-            set_default_height: 600,
+            set_default_height: 650,
             //add_css_class: "devel",
             set_sensitive: watch!(!model.busy),
             set_content: main_box = Some(&gtk::Box) {

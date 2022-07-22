@@ -10,7 +10,6 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 ## To Do's currently unimplemented
 
 - Handle files in `imports`
-- Add easy widgets for modifying simple options like booleans and strings
 - Add an icon
 
 ## Things Done
@@ -22,6 +21,8 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 - Rebuild system and show errors
 - Handle `<name>` and `*` fields in options
 - Package polkit policy file
+- Add easy widgets for modifying simple options like booleans and strings
+    - Plan to add more like lists in the future
 
 ## NixOS Installation
 
@@ -35,13 +36,14 @@ nix-env -f nixos-conf-editor -i nixos-conf-editor
 Head of `configuration.nix`
 
 ```nix
+{ config, pkgs, lib, ... }:
 let
   nixos-conf-editor = (import (pkgs.fetchFromGitHub {
     owner = "vlinkz";
     repo = "nixos-conf-editor";
-    rev = "0.0.2";
+    rev = "0.0.3";
     sha256 = "0000000000000000000000000000000000000000000000000000";
-  })).default;
+  })) {};
 in
 ```
 Packages:
