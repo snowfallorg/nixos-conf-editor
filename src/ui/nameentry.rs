@@ -2,7 +2,6 @@ use super::window::*;
 use adw::prelude::*;
 use relm4::*;
 
-#[tracker::track]
 pub struct NameEntryModel {
     hidden: bool,
     msg: String,
@@ -30,7 +29,6 @@ impl ComponentUpdate<AppModel> for NameEntryModel {
             msg: String::default(),
             text: String::default(),
             existing: vec![],
-            tracker: 0,
         }
     }
 
@@ -41,17 +39,16 @@ impl ComponentUpdate<AppModel> for NameEntryModel {
         _sender: Sender<NameEntryMsg>,
         parent_sender: Sender<AppMsg>,
     ) {
-        self.reset();
         match msg {
             NameEntryMsg::Show(msg, existing) => {
-                self.set_hidden(false);
-                self.set_msg(msg);
-                self.set_existing(existing);
-                self.set_text(String::default());
+                self.hidden = false;
+                self.msg = msg;
+                self.existing = existing;
+                self.text = String::default();
             }
             NameEntryMsg::Cancel => self.hidden = true,
             NameEntryMsg::Save => {
-                self.set_hidden(true);
+                self.hidden = true;
                 send!(parent_sender, AppMsg::AddNameAttr(None, self.text.clone()));
             }
             NameEntryMsg::SetText(s) => {

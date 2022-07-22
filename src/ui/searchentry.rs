@@ -7,13 +7,10 @@ use relm4::{
     *,
 };
 
-#[tracker::track]
 pub struct SearchEntryModel {
     hidden: bool,
     position: Vec<String>,
-    #[tracker::no_eq]
     data: FactoryVec<SearchEntryOption>,
-    #[tracker::no_eq]
     nameopts: FactoryVec<SearchNameEntryOption>,
     customopt: Vec<String>,
 }
@@ -39,7 +36,6 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
             data: FactoryVec::new(),
             nameopts: FactoryVec::new(),
             customopt: Vec::default(),
-            tracker: 0,
         }
     }
 
@@ -50,7 +46,6 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
         _sender: Sender<SearchEntryMsg>,
         parent_sender: Sender<AppMsg>,
     ) {
-        self.reset();
         match msg {
             SearchEntryMsg::Show(pos, optdata) => {
                 self.data.clear();
@@ -73,14 +68,14 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
                     .iter()
                     .map(|x| x.replace("<name>", "&lt;name&gt;"))
                     .collect();
-                self.set_hidden(false);
+                self.hidden = false;
             }
             SearchEntryMsg::Close => {
-                self.set_hidden(true);
+                self.hidden = true;
                 self.data.clear();
             }
             SearchEntryMsg::Save(dest) => {
-                self.set_hidden(true);
+                self.hidden = true;
                 let mut n: HashMap<usize, usize> = HashMap::new();
                 if dest.is_none() {
                     for i in 0..self.position.len() {

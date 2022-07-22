@@ -1,6 +1,6 @@
 use adw::prelude::*;
 use relm4::{factory::*, *};
-use super::{window::*, searchfactory::SearchOption, searchentry::SearchEntryModel};
+use super::{window::*, searchfactory::SearchOption};
 
 #[derive(Debug)]
 pub enum SearchPageMsg {
@@ -9,10 +9,8 @@ pub enum SearchPageMsg {
     LoadOptions(Vec<(String, bool)>),
 }
 
-#[tracker::track]
 pub struct SearchPageModel {
     pub options: Vec<(String, bool)>,
-    #[tracker::no_eq]
     pub oplst: FactoryVecDeque<SearchOption>,
 }
 
@@ -27,7 +25,6 @@ impl ComponentUpdate<AppModel> for SearchPageModel {
         SearchPageModel {
             options: vec![],
             oplst: FactoryVecDeque::new(),
-            tracker: 0,
         }
     }
 
@@ -38,7 +35,6 @@ impl ComponentUpdate<AppModel> for SearchPageModel {
         _sender: Sender<SearchPageMsg>,
         parent_sender: Sender<AppMsg>,
     ) {
-        self.reset();        
         match msg {
             SearchPageMsg::Search(query) => {
                 self.oplst.clear();
@@ -65,7 +61,7 @@ impl ComponentUpdate<AppModel> for SearchPageModel {
                 }
             }
             SearchPageMsg::LoadOptions(options) => {
-                self.set_options(options);
+                self.options = options;
             }
         }
     }

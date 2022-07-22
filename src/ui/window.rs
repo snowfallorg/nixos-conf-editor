@@ -31,10 +31,9 @@ use crate::ui::rebuild::RebuildMsg;
 use crate::ui::searchentry::SearchEntryMsg;
 use crate::ui::windowloading::LoadErrorMsg;
 use adw::prelude::*;
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info, trace};
 use relm4::{actions::*, factory::*, AppUpdate, Model, RelmApp, Sender, Widgets, *};
 use std::collections::HashMap;
-use std::ops::Index;
 
 #[tracker::track]
 pub struct AppModel {
@@ -430,7 +429,7 @@ impl AppUpdate for AppModel {
                 components
                     .optionpage
                     .send(OptPageMsg::UpdateOption(
-                        d.clone(),
+                        Box::new(d.clone()),
                         pos.to_vec(),
                         newref.to_vec(),
                         conf,
@@ -682,7 +681,6 @@ impl AppUpdate for AppModel {
                 } else {
                     self.position.join(".")
                 };
-                let conf = self.conf.clone();
                 self.update_nameattrs(|x| {
                     if let Some(v) = x.get(&pos) {
                         // let confvals = getconfvals(&conf, &pos.split('.').map(|x| x.to_string()).collect::<Vec<_>>());
@@ -971,7 +969,7 @@ pub fn run() {
         tracker: 0,
     };
     let app = RelmApp::with_app(model, adw::Application::new(
-        Some("dev.vlinkz.NixosConfEditor"),
+        Some(crate::config::APP_ID),
         adw::gio::ApplicationFlags::empty(),
     ));
     app.run();

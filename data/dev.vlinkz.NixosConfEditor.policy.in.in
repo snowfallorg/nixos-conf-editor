@@ -6,7 +6,7 @@
     <vendor_url>https://github.com/vlinkz</vendor_url>
     <action id="dev.vlinkz.NixosConfEditor">
         <description>Give NixOS Configuration Editor root access</description>
-        <message>Authentication is required to let NixOS Configuration Editor modify the system</message>
+        <message>Authentication is required modify the NixOS system configuration</message>
         <defaults>
             <allow_any>no</allow_any>
             <allow_inactive>no</allow_inactive>

@@ -1,6 +1,6 @@
 // Backup https://channels.nixos.org/nixos-22.05/options.json.br
 
-use std::{env, process::Command, path::Path, fs::{self, File}, io::{Write, Read, self, Cursor}, error::Error};
+use std::{env, process::Command, path::Path, fs::{self, File}, io::{Write, Read, self}, error::Error};
 use curl::easy::Easy;
 use serde_json::Value;
 

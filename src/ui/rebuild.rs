@@ -157,7 +157,7 @@ impl Widgets<RebuildModel, AppModel> for RebuildWidgets {
                     add_child: building = &gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append = &gtk::Spinner {
+                        append: spinner = &gtk::Spinner {
                             set_spinning: true,
                             set_height_request: 60,
                         },
@@ -215,10 +215,11 @@ impl Widgets<RebuildModel, AppModel> for RebuildWidgets {
                             set_left_margin: 5,
                             set_vexpand: true,
                             set_hexpand: true,
+                            set_vscroll_policy: gtk::ScrollablePolicy::Minimum,
                             set_buffer: outbuf = Some(&sourceview5::Buffer) {
                                 set_style_scheme: track!(model.changed(RebuildModel::scheme()), model.scheme.as_ref()),
                                 set_text: track!(model.changed(RebuildModel::text()), &model.text),
-                            },
+                            }
                         }
                     }
                 },
@@ -262,15 +263,24 @@ impl Widgets<RebuildModel, AppModel> for RebuildWidgets {
     }
 
     fn pre_view() {
-        if let Some(mut iter) = outbuf.iter_at_line(outbuf.line_count() - 1) {
-            outview.scroll_to_iter(&mut iter, 0.0, true, 1.0, 0.0);
-        }
         match model.status {
             RebuildStatus::Building => {
                 self.statusstack.set_visible_child(&self.building);
             }
             RebuildStatus::Success => self.statusstack.set_visible_child(&self.success),
             RebuildStatus::Error => self.statusstack.set_visible_child(&self.error),
+        }
+    }
+
+    fn post_view() {
+        let adj = scrollwindow.vadjustment();
+        if model.status == RebuildStatus::Building {
+            adj.set_upper(adj.upper() + 20.0);
+        }
+        adj.set_value(adj.upper());
+        if model.status != RebuildStatus::Building {
+            outview.scroll_to_mark(&outview.buffer().get_insert(), 0.0, true, 0.0, 0.0);
+            scrollwindow.hadjustment().set_value(0.0);
         }
     }
 }

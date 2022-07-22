@@ -6,7 +6,7 @@ use sourceview5::prelude::*;
 use tokio::runtime::{Builder, Runtime};
 use tokio::sync::mpsc::{channel, Sender as TokioSender};
 use std::process::Command;
-use log::{debug, info, trace, warn};
+use log::{debug, info};
 use super::optionpage::*;
 use super::window::{AppModel, AppMsg};
 
@@ -109,7 +109,6 @@ impl MessageHandler<OptPageModel> for SaveAsyncHandler {
 }
 
 
-#[tracker::track]
 pub struct SaveErrorModel {
     hidden: bool,
     msg: String,
@@ -136,7 +135,6 @@ impl ComponentUpdate<AppModel> for SaveErrorModel {
             hidden: true,
             msg: String::default(),
             scheme: None,
-            tracker: 0,
         }
     }
 
@@ -147,7 +145,6 @@ impl ComponentUpdate<AppModel> for SaveErrorModel {
         _sender: Sender<SaveErrorMsg>,
         parent_sender: Sender<AppMsg>,
     ) {
-        self.reset();
         match msg {
             SaveErrorMsg::Show(s) => {
                 self.hidden = false;
@@ -163,7 +160,7 @@ impl ComponentUpdate<AppModel> for SaveErrorModel {
             },
             SaveErrorMsg::Cancel => self.hidden = true,
             SaveErrorMsg::SetScheme(scheme) => {
-                self.set_scheme(sourceview5::StyleSchemeManager::default().scheme(&scheme));
+                self.scheme = sourceview5::StyleSchemeManager::default().scheme(&scheme);
             }
         }
     }

@@ -1,6 +1,6 @@
-use log::{debug, info, trace, warn};
+use log::{debug, warn};
 use nix_editor;
-use std::{collections::HashMap, error::Error, fs, hash::Hash, io, path::Path};
+use std::{collections::HashMap, error::Error, fs, io, path::Path};
 
 pub fn parseconfig(path: &str) -> Result<HashMap<String, String>, Box<dyn Error>> {
     let f = fs::read_to_string(Path::new(path))?;
@@ -101,8 +101,8 @@ pub fn editconfig(
                     Ok(x) => x,
                     Err(_) => vec![],
                 };
-                for j in 0..arr.len() {
-                    p.insert(j, arr[j].to_string());
+                for (j, a) in arr.iter().enumerate() {
+                    p.insert(j, a.to_string());
                 }
             }
 
@@ -179,15 +179,15 @@ pub fn readval(path: &str, query: &str, refq: &str) -> Result<String, Box<dyn Er
         let mut r: Vec<Vec<String>> = vec![vec![]];
         let mut indexvec: Vec<usize> = vec![];
         let mut j = 0;
-        for i in 0..p.len() {
-            if p[i] == "*" {
+        for (i, attr) in p.iter().enumerate() {
+            if *attr == "*" {
                 r.push(vec![]);
                 if let Ok(x) = query.split('.').collect::<Vec<_>>()[i].parse::<usize>() {
                     indexvec.push(x);
                 }
                 j += 1;
             } else {
-                r[j].push(p[i].to_string());
+                r[j].push(attr.to_string());
             }
         }
         let mut f = fs::read_to_string(Path::new(path)).unwrap();

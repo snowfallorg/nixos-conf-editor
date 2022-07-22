@@ -8,7 +8,7 @@ use super::window::*;
 use super::savechecking::*;
 
 pub enum OptPageMsg {
-    UpdateOption(OptionData, Vec<String>, Vec<String>, String, Vec<String>),
+    UpdateOption(Box<OptionData>, Vec<String>, Vec<String>, String, Vec<String>),
     UpdateConf(String),
     ResetConf,
     SaveConf,
@@ -37,7 +37,6 @@ impl Model for OptPageModel {
 #[derive(relm4::Components)]
 pub struct OptPageComponents {
     async_handler: RelmMsgHandler<SaveAsyncHandler, OptPageModel>,
-    //saveerror: RelmComponent<SaveErrorModel, OptPageModel>,
 }
 
 #[relm4::async_trait]
@@ -68,7 +67,7 @@ impl ComponentUpdate<AppModel> for OptPageModel {
             OptPageMsg::UpdateOption(data, opt, refopt, conf, alloptions) => {
                 self.update_conf(|x| x.clear());
                 self.update_modifiedconf(|x| x.clear());
-                self.set_data(data);
+                self.set_data(*data);
                 self.set_opt(opt);
                 self.set_refopt(refopt);
                 self.set_conf(conf.clone());
