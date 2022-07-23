@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use adw::prelude::*;
 use relm4::{factory::*, *};
 use super::{window::*, searchfactory::SearchOption};
@@ -6,11 +8,11 @@ use super::{window::*, searchfactory::SearchOption};
 pub enum SearchPageMsg {
     Search(String),
     OpenOption(Vec<String>, Option<Vec<String>>),
-    LoadOptions(Vec<(String, bool)>),
+    LoadOptions(Vec<(String, bool, String)>),
 }
 
 pub struct SearchPageModel {
-    pub options: Vec<(String, bool)>,
+    pub options: Vec<(String, bool, String)>,
     pub oplst: FactoryVecDeque<SearchOption>,
 }
 
@@ -38,17 +40,41 @@ impl ComponentUpdate<AppModel> for SearchPageModel {
         match msg {
             SearchPageMsg::Search(query) => {
                 self.oplst.clear();
-                let q = query.split(' ');
+                let q = query.split_whitespace();
                 let mut sortedoptions = self.options.clone();
-                sortedoptions.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+                if q.clone().any(|x| x.len() > 2) {
+                    sortedoptions = sortedoptions.iter().filter(|x| {
+                        for part in q.clone() {
+                            if x.0.to_lowercase().contains(&part.to_lowercase()) {
+                                return true;
+                            }
+                        }
+                        false
+                    }).map(|x| x.to_owned()).collect::<Vec<_>>();
+                    sortedoptions.sort_by(|a, b| {
+                        let mut acount = 0;
+                        let mut bcount = 0;
+                        for part in q.clone() {
+                            acount += a.0.to_lowercase().matches(&part.to_lowercase()).count();
+                            bcount += b.0.to_lowercase().matches(&part.to_lowercase()).count();
+                        }
+                        match acount.cmp(&bcount) {
+                            Ordering::Less => Ordering::Less,
+                            Ordering::Greater => Ordering::Greater,
+                            Ordering::Equal => a.0.len().cmp(&b.0.len()),
+                        }
+                    });
+                } else {
+                    sortedoptions.sort_by(|a, b| a.0.len().cmp(&b.0.len()));
+                }
                 for opt in sortedoptions {
-                    if q.clone().all(|part| opt.0.contains(part)) {
+                    if q.clone().all(|part| opt.0.to_lowercase().contains(&part.to_lowercase()) || if q.clone().any(|x| x.len() > 2) { opt.2.to_lowercase().contains(&part.to_lowercase()) } else { false }) {
                         self.oplst.push_back(SearchOption {
                             value: opt.0.split('.').map(|s| s.to_string()).collect::<Vec<String>>(),
                             configured: opt.1,
                         });
                     }
-                    if self.oplst.len() >= 1500 {
+                    if self.oplst.len() >= 1000 {
                         break;
                     }
                 }

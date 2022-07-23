@@ -162,11 +162,11 @@ impl AppUpdate for AppModel {
                 self.update_position(|x| x.clear());
                 let options = self
                     .data
-                    .keys()
-                    .map(|k| {
+                    .iter()
+                    .map(|(k, data)| {
                         let mut v = k.split('.').map(|x| x.to_string()).collect::<Vec<_>>();
                         let attr = v.pop().unwrap_or_default();
-                        (k.to_string(), opconfigured(&self.conf, &v, attr))
+                        (k.to_string(), opconfigured(&self.conf, &v, attr), data.description.to_string())
                     })
                     .collect::<Vec<_>>();
                 send!(
