@@ -32,6 +32,8 @@ pub enum RebuildMsg {
     Save,
     Close,
     SetScheme(String),
+    WriteConfigQuit(String, String),
+    Quit,
 }
 
 #[derive(PartialEq)]
@@ -113,6 +115,7 @@ impl ComponentUpdate<AppModel> for RebuildModel {
                     .blocking_send(RebuildAsyncHandlerMsg::WriteConfig(
                         self.config.to_string(),
                         self.path.to_string(),
+                        false
                     ))
                     .unwrap();
                 send!(sender, RebuildMsg::Close);
@@ -131,6 +134,20 @@ impl ComponentUpdate<AppModel> for RebuildModel {
             }
             RebuildMsg::SetScheme(scheme) => {
                 self.set_scheme(sourceview5::StyleSchemeManager::default().scheme(&scheme));
+            }
+            RebuildMsg::WriteConfigQuit(f, path) => {
+                components
+                    .async_handler
+                    .sender()
+                    .blocking_send(RebuildAsyncHandlerMsg::WriteConfig(
+                        f,
+                        path,
+                        true
+                    ))
+                    .unwrap();
+            }
+            RebuildMsg::Quit => {
+                send!(parent_sender, AppMsg::Close);
             }
         }
     }
@@ -293,7 +310,7 @@ pub struct RebuildAsyncHandler {
 #[derive(Debug)]
 pub enum RebuildAsyncHandlerMsg {
     RunRebuild(String, String, Option<String>),
-    WriteConfig(String, String),
+    WriteConfig(String, String, bool),
 }
 
 impl MessageHandler<RebuildModel> for RebuildAsyncHandler {
@@ -392,17 +409,25 @@ impl MessageHandler<RebuildModel> for RebuildAsyncHandler {
                                 send!(parent_sender, RebuildMsg::FinishError(None));
                             }
                         }
-                        RebuildAsyncHandlerMsg::WriteConfig(f, path) => {
+                        RebuildAsyncHandlerMsg::WriteConfig(f, path, quit) => {
                             let exe = match std::env::current_exe() {
                                 Ok(mut e) => {
-                                    e.pop();
+                                    e.pop(); // root/bin
+                                    e.pop(); // root/
+                                    e.push("libexec"); // root/libexec
                                     e.push("nce-helper");
-                                    e.to_string_lossy().to_string()
+                                    let x = e.to_string_lossy().to_string();
+                                    if Path::new(&x).is_file() {
+                                        x
+                                    } else {
+                                        String::from("nce-helper")
+                                    }
                                 },
                                 Err(_) => {
                                     String::from("nce-helper")
                                 }
                             };
+
                             let mut writecmd = Command::new("pkexec")
                                 .arg(&exe)
                                 .arg("config")
@@ -419,6 +444,9 @@ impl MessageHandler<RebuildModel> for RebuildAsyncHandler {
                                 .write_all(f.as_bytes())
                                 .unwrap();
                             writecmd.wait().unwrap();
+                            if quit {
+                                send!(parent_sender, RebuildMsg::Quit);
+                            }
                         }
                     }
                 });

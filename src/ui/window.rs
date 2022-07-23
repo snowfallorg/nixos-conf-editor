@@ -27,6 +27,7 @@ use crate::parse::{
 use crate::ui::about::AboutMsg;
 use crate::ui::nameentry::NameEntryMsg;
 use crate::ui::preferencespage::PrefMsg;
+use crate::ui::quitdialog::{QuitCheckModel, QuitCheckMsg};
 use crate::ui::rebuild::RebuildMsg;
 use crate::ui::searchentry::SearchEntryMsg;
 use crate::ui::windowloading::LoadErrorMsg;
@@ -108,6 +109,7 @@ pub enum AppMsg {
     AddNameAttr(Option<String>, String),
     AddStar(String),
     OpenSearchOption(Vec<String>, Vec<String>),
+    SaveQuit,
 }
 
 #[derive(PartialEq, Debug)]
@@ -137,6 +139,7 @@ pub struct AppComponents {
     welcome: RelmComponent<WelcomeModel, AppModel>,
     nameentry: RelmComponent<NameEntryModel, AppModel>,
     searchpageentry: RelmComponent<SearchEntryModel, AppModel>,
+    quitdialog: RelmComponent<QuitCheckModel, AppModel>,
 }
 
 impl Model for AppModel {
@@ -194,7 +197,11 @@ impl AppUpdate for AppModel {
             }
             AppMsg::Close => {
                 info!("Received AppMsg::Close");
-                relm4::gtk_application().quit();
+                if self.editedopts.is_empty() {
+                    relm4::gtk_application().quit();
+                } else {
+                    send!(components.quitdialog.sender(), QuitCheckMsg::Show);
+                }
             }
             AppMsg::SetConfPath(s, b) => {
                 info!("Received AppMsg::SetConfPath");
@@ -234,12 +241,6 @@ impl AppUpdate for AppModel {
                         p.push(String::from(y));
                     }
                 }
-                // let mut newref = self.refposition.clone();
-                // if pos.len() < self.refposition.len() {
-                //     newref = self.refposition[0..pos.len()].to_vec();
-                // } else {
-                //     newref.append(&mut p[self.refposition.len()..].to_vec());
-                // }
 
                 debug!("NEW REFPOSITON: {:?}", newref);
 
@@ -402,8 +403,6 @@ impl AppUpdate for AppModel {
             }
             AppMsg::OpenOption(pos, newref) if !self.busy => {
                 info!("Received AppMsg::OpenOption");
-                // let mut newref = self.refposition.clone();
-                // newref.append(&mut pos[self.refposition.len()..].to_vec());
                 trace!("NEW REFPOSITON: {:?}", newref);
                 let d = match self.data.get(&newref.join(".")) {
                     Some(x) => x,
@@ -687,8 +686,7 @@ impl AppUpdate for AppModel {
                 };
                 self.update_nameattrs(|x| {
                     if let Some(v) = x.get(&pos) {
-                        // let confvals = getconfvals(&conf, &pos.split('.').map(|x| x.to_string()).collect::<Vec<_>>());
-                        if !v.contains(&name) { // && !confvals.contains(&name) {
+                        if !v.contains(&name) {
                             let mut v = v.clone();
                             v.push(name.to_string());
                             x.insert(pos.to_string(), v);
@@ -711,6 +709,27 @@ impl AppUpdate for AppModel {
                 info!("Received AppMsg::OpenSearchOption");
                 send!(components.searchpage.sender(), SearchPageMsg::OpenOption(pos, Some(refpos)));
             }
+            AppMsg::SaveQuit => {
+                info!("Received AppMsg::SaveQuit");
+                let conf = match config::editconfigpath(&self.configpath, self.editedopts.clone()) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        components
+                            .rebuild
+                            .send(RebuildMsg::FinishError(Some(format!(
+                                "Error modifying configuration file.\n{}",
+                                e
+                            ))))
+                            .unwrap();
+                        return true;
+                    }
+                };
+                send!(
+                    components.rebuild.sender(),
+                    RebuildMsg::WriteConfigQuit(conf, self.configpath.to_string())
+                );
+                self.editedopts.clear();
+            }
             _ => {}
         }
         true
@@ -725,6 +744,11 @@ impl Widgets<AppModel, ()> for AppWidgets {
             set_default_height: 650,
             //add_css_class: "devel",
             set_sensitive: watch!(!model.busy),
+            connect_close_request(sender) => move |_| {
+                debug!("Caught close request");
+                send!(sender, AppMsg::Close);
+                gtk::Inhibit(true)
+            },
             set_content: main_box = Some(&gtk::Box) {
                 set_orientation: gtk::Orientation::Vertical,
 
@@ -818,9 +842,6 @@ impl Widgets<AppModel, ()> for AppWidgets {
                                             set_hexpand: true,
                                             set_icon_name: Some("list-add-symbolic"),
                                             add_css_class: "accent",
-                                            //set_label: "<b>+</b>",
-                                            //set_use_markup: true,
-                                            //add_css_class: "title-2",
                                         }
                                     }
                                 },

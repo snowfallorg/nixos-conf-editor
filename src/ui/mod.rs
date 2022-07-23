@@ -10,3 +10,4 @@ mod rebuild;
 mod preferencespage;
 mod nameentry;
 mod searchentry;
+mod quitdialog;
