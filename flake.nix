@@ -50,6 +50,7 @@
                   desktop-file-utils
                   meson
                   ninja
+                  git
                   wrapGAppsHook4
                 ];
             };

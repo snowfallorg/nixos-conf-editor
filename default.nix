@@ -22,6 +22,7 @@ pkgs.stdenv.mkDerivation rec {
     meson
     ninja
     pkg-config
+    git
     wrapGAppsHook4
   ] ++ (with pkgs.rustPlatform; [
     cargoSetupHook
