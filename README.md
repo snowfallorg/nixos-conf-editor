@@ -1,3 +1,7 @@
+<div align="center">
+
+<img src="data/icons/dev.vlinkz.NixosConfEditor.svg"/>
+
 NixOS Configuration Editor
 ===
 
@@ -7,31 +11,12 @@ NixOS Configuration Editor
 
 A simple NixOS configuration editor application built with [libadwaita](https://gitlab.gnome.org/GNOME/libadwaita), [GTK4](https://www.gtk.org/), and [Relm4](https://relm4.org/). The goal of this project is to provide a simple graphical tool for modifying and managing desktop NixOS configurations.
 
-## To Do's currently unimplemented
+<img src="data/screenshots/multiwindowlight.png#gh-light-mode-only"/>
+<img src="data/screenshots/multiwindowdark.png#gh-dark-mode-only"/> 
 
-- Handle files in `imports`
-- Add an icon
-
-## Things Done
-
-- Set and modify configuration options
-    - Validate option types
-- Search options
-- Indicate which options are set 
-- Rebuild system and show errors
-- Handle `<name>` and `*` fields in options
-- Package polkit policy file
-- Add easy widgets for modifying simple options like booleans and strings
-    - Plan to add more like lists in the future
+</div>
 
 ## NixOS Installation
-
-```bash
-git clone https://github.com/vlinkz/nixos-conf-editor
-nix-env -f nixos-conf-editor -i nixos-conf-editor 
-```
-
-## Declarative Installation
 
 Head of `configuration.nix`
 
@@ -54,6 +39,14 @@ with pkgs; [
   nixos-conf-editor
   # rest of your packages
 ];
+```
+For any other method of installation, when rebuilding you will be prompted to authenticate twice in a row
+
+## 'nix-env' Installation
+
+```bash
+git clone https://github.com/vlinkz/nixos-conf-editor
+nix-env -f nixos-conf-editor -i nixos-conf-editor 
 ```
 
 ## Single run on an flakes enabled system:
@@ -99,9 +92,13 @@ RUST_LOG=trace nixos-conf-editor
   <img src="data/screenshots/invaliddark.png#gh-dark-mode-only"/> 
 </p>
 
-[builtwithnix badge]: https://img.shields.io/badge/Built%20With-Nix-41439A?style=flat-square&logo=nixos&logoColor=white
+## Licenses
+
+The icons in [data/icons](data/icons/) contains assets from the [NixOS logo](https://github.com/NixOS/nixos-artwork/tree/master/logo) and are licensed under a [CC-BY license](https://creativecommons.org/licenses/by/4.0/).
+
+[builtwithnix badge]: https://img.shields.io/badge/Built%20With-Nix-41439A?style=for-the-badge&logo=nixos&logoColor=white
 [builtwithnix]: https://builtwithnix.org/
-[MIT badge]: https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square
+[MIT badge]: https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge
 [MIT]: https://opensource.org/licenses/MIT
-[matrix badge]: https://img.shields.io/badge/matrix-join%20chat-0cbc8c?style=flat-square&logo=matrix&logoColor=white
+[matrix badge]: https://img.shields.io/badge/matrix-join%20chat-0cbc8c?style=for-the-badge&logo=matrix&logoColor=white
 [matrix]: https://matrix.to/#/#nixos-gui:matrix.org
