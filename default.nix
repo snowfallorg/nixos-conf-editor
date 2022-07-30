@@ -11,7 +11,7 @@ pkgs.stdenv.mkDerivation rec {
   cargoDeps = pkgs.rustPlatform.fetchCargoTarball {
     inherit src;
     name = "${pname}-${version}";
-    hash = "sha256-cdZRirlmQrMuQvXc/K/WlRqcgyoAte6dgRE7mmLrTjw=";
+    hash = "sha256-pka7LD7DZKbIhIBFZ5u05rG0vTY1NlhHbAa/7FhhaOQ=";
   };
 
   nativeBuildInputs = with pkgs; [
@@ -39,6 +39,10 @@ pkgs.stdenv.mkDerivation rec {
     openssl
     wayland
     gnome.adwaita-icon-theme
+  ];
+
+  mesonFlags = [
+    "-Dprofile=development"
   ];
 
   postInstall = ''

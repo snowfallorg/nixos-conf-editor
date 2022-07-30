@@ -8,16 +8,19 @@ pub struct SearchOption {
     pub configured: bool,
 }
 
-#[relm4::factory_prototype(pub)]
-impl FactoryPrototype for SearchOption {
-    type Factory = FactoryVecDeque<Self>;
-    type Widgets = SearchWidgets;
-    type View = gtk::ListBox;
-    type Msg = SearchPageMsg;
+#[relm4::factory(pub)]
+impl FactoryComponent<gtk::ListBox, SearchPageMsg> for SearchOption {
+    type Command = ();
+    type CommandOutput = ();
+    type InitParams = SearchOption;
+    type Input = ();
+    type Output = ();
+    type Widgets = SearchOptionWidgets;
 
     view! {
         adw::PreferencesRow {
-            set_child = Some(&gtk::Box) {
+            #[wrap(Some)]
+            set_child = &gtk::Box {
                 set_orientation: gtk::Orientation::Horizontal,
                 set_spacing: 6,
                 set_margin_all: 15,
@@ -37,5 +40,13 @@ impl FactoryPrototype for SearchOption {
         }
     }
 
-    fn position(&self, _index: &DynamicIndex) {}
+    fn init_model(
+        value: Self::InitParams,
+        _index: &DynamicIndex,
+        _input: &Sender<Self::Input>,
+        _output: &Sender<Self::Output>,
+    ) -> Self {
+        value
+    }
+
 }

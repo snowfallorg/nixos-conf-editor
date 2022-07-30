@@ -1,12 +1,18 @@
+use super::about;
 use super::about::AboutModel;
+use super::nameentry;
 use super::nameentry::NameEntryModel;
+use super::optionpage;
 use super::optionpage::*;
 use super::preferencespage::PrefModel;
 use super::preferencespage::WelcomeModel;
 use super::preferencespage::WelcomeMsg;
+use super::quitdialog;
+use super::quitdialog::QuitInit;
 use super::rebuild::RebuildModel;
 use super::savechecking::SaveErrorModel;
 use super::savechecking::SaveErrorMsg;
+use super::searchentry;
 use super::searchentry::SearchEntryModel;
 use super::windowloading::LoadErrorModel;
 use super::windowloading::WindowAsyncHandler;
@@ -33,20 +39,23 @@ use crate::ui::searchentry::SearchEntryMsg;
 use crate::ui::windowloading::LoadErrorMsg;
 use adw::prelude::*;
 use log::*;
-use relm4::{actions::*, factory::*, AppUpdate, Model, RelmApp, Sender, Widgets, *};
+use relm4::{actions::*, factory::*, *};
+use relm4::gtk::glib::object::Cast;
 use std::collections::HashMap;
+use std::convert::identity;
 
 #[tracker::track]
 pub struct AppModel {
+    application: adw::Application,
     pub position: Vec<String>,
     pub refposition: Vec<String>,
     tree: AttrTree,
     #[tracker::no_eq]
-    attributes: FactoryVec<AttrPos>,
+    attributes: FactoryVecDeque<gtk::ListBox, AttrPos, AppMsg>,
     #[tracker::no_eq]
-    options: FactoryVec<OptPos>,
+    options: FactoryVecDeque<gtk::ListBox, OptPos, AppMsg>,
     #[tracker::no_eq]
-    posbtn: FactoryVec<AttrBtn>,
+    posbtn: FactoryVecDeque<gtk::Box, AttrBtn, AppMsg>,
     pub conf: HashMap<String, String>,
     page: Page,
     header: HeaderBar,
@@ -61,6 +70,32 @@ pub struct AppModel {
     fieldreplace: HashMap<usize, String>,
     nameorstar: AddAttrOptions,
     flake: Option<String>,
+
+    // Components
+    #[tracker::no_eq]
+    windowloading: WorkerController<WindowAsyncHandler>,
+    #[tracker::no_eq]
+    loaderror: Controller<LoadErrorModel>,
+    #[tracker::no_eq]
+    optionpage: Controller<OptPageModel>,
+    #[tracker::no_eq]
+    searchpage: Controller<SearchPageModel>,
+    #[tracker::no_eq]
+    saveerror: Controller<SaveErrorModel>,
+    #[tracker::no_eq]
+    about: Controller<AboutModel>,
+    #[tracker::no_eq]
+    preferences: Controller<PrefModel>,
+    #[tracker::no_eq]
+    rebuild: Controller<RebuildModel>,
+    #[tracker::no_eq]
+    welcome: Controller<WelcomeModel>,
+    #[tracker::no_eq]
+    nameentry: Controller<NameEntryModel>,
+    #[tracker::no_eq]
+    searchpageentry: Controller<SearchEntryModel>,
+    #[tracker::no_eq]
+    quitdialog: Controller<QuitCheckModel>,
 }
 
 #[derive(Debug)]
@@ -77,6 +112,7 @@ enum AddAttrOptions {
     None,
 }
 
+#[derive(Debug)]
 pub enum AppMsg {
     Welcome,
     InitialLoad(LoadValues),
@@ -126,42 +162,355 @@ enum HeaderBar {
     Search,
 }
 
-#[derive(relm4::Components)]
-pub struct AppComponents {
-    windowloading: RelmMsgHandler<WindowAsyncHandler, AppModel>,
-    loaderror: RelmComponent<LoadErrorModel, AppModel>,
-    optionpage: RelmComponent<OptPageModel, AppModel>,
-    searchpage: RelmComponent<SearchPageModel, AppModel>,
-    saveerror: RelmComponent<SaveErrorModel, AppModel>,
-    about: RelmComponent<AboutModel, AppModel>,
-    preferences: RelmComponent<PrefModel, AppModel>,
-    rebuild: RelmComponent<RebuildModel, AppModel>,
-    welcome: RelmComponent<WelcomeModel, AppModel>,
-    nameentry: RelmComponent<NameEntryModel, AppModel>,
-    searchpageentry: RelmComponent<SearchEntryModel, AppModel>,
-    quitdialog: RelmComponent<QuitCheckModel, AppModel>,
-}
-
-impl Model for AppModel {
-    type Msg = AppMsg;
+#[relm4::component(pub)]
+impl SimpleComponent for AppModel {
+    type InitParams = adw::Application;
+    type Input = AppMsg;
+    type Output = ();
     type Widgets = AppWidgets;
-    type Components = AppComponents;
-}
 
-impl AppUpdate for AppModel {
-    fn update(&mut self, msg: AppMsg, components: &AppComponents, sender: Sender<AppMsg>) -> bool {
+    view! {
+        main_window = adw::ApplicationWindow {
+            set_default_width: 1000,
+            set_default_height: 650,
+            //add_css_class: "devel",
+            #[watch]
+            set_sensitive: !model.busy,
+            connect_close_request[sender] => move |_| {
+                debug!("Caught close request");
+                sender.input(AppMsg::Close);
+                gtk::Inhibit(true)
+            },
+            #[wrap(Some)]
+            set_content: main_box = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+
+                append = &adw::HeaderBar {
+                    #[wrap(Some)]
+                    set_title_widget: headerstack = &gtk::Stack {
+                        set_transition_type: gtk::StackTransitionType::Crossfade,
+                        add_child: title = &gtk::Label {
+                            set_label: "NixOS Configuration Editor",
+                        },
+                        
+                        add_child: buttons = &gtk::Box {
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_halign: gtk::Align::Center,
+                            add_css_class: "linked",
+                            
+                            #[local_ref]
+                            buttonsbox -> gtk::Box {
+                                #[local]
+                                prepend = &homebtn -> gtk::Button {
+                                    set_icon_name: "user-home-symbolic",
+                                    connect_clicked[sender] => move |_| {
+                                        sender.input(AppMsg::MoveTo(vec![], vec![]))
+                                    }
+                                },
+                                set_orientation: gtk::Orientation::Horizontal,
+                                add_css_class: "linked",
+                            }
+                        },
+                        add_child: search = &gtk::SearchEntry {
+                                add_css_class: "inline",
+                                set_placeholder_text: Some("Search"),
+                                set_halign: gtk::Align::Center,
+                                set_max_width_chars: 57,
+                                //set_search_delay: 500, // Change once gtk4-rs 4.8 is out
+                                connect_search_changed[sender] => move |x| {
+                                    if x.text().is_empty() {
+                                        send!(sender, AppMsg::HideSearchPage);
+                                    } else {
+                                        send!(sender, AppMsg::ShowSearchPage(x.text().to_string()));
+                                    }
+                                },
+                        },
+                    },
+                    pack_end: menubtn = &gtk::MenuButton {
+                        set_icon_name: "view-more-symbolic",
+                        set_menu_model: Some(&main_menu),
+                    },
+                    pack_end = &gtk::ToggleButton {
+                        #[track(model.changed(AppModel::position()))]
+                        set_active: false,
+                        #[track(model.changed(AppModel::header()))]
+                        set_active: model.header == HeaderBar::Search,
+                        set_icon_name: "edit-find-symbolic",
+                        connect_toggled[sender] => move |x| {
+                            send!(sender, {
+                                if x.is_active() {
+                                    AppMsg::ShowSearch
+                                } else {
+                                    AppMsg::HideSearch
+                                }
+                            });
+                        },
+                    },
+                    pack_start = &gtk::Button {
+                        set_label: "Rebuild",
+                        connect_clicked[sender] => move |_| {
+                            send!(sender, AppMsg::Rebuild);
+                        },
+                    }
+                },
+                #[name(stack)]
+                gtk::Stack {
+                    // set_transition_type: gtk::StackTransitionType::Crossfade,
+                    add_child: loading = &gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_halign: gtk::Align::Center,
+                        set_valign: gtk::Align::Center,
+                        set_spacing: 10,
+                        append = &gtk::Spinner {
+                            set_spinning: true,
+                            set_height_request: 80,
+                        },
+                        append = &gtk::Label {
+                            set_label: "Loading...",
+                        },
+                    },
+                    add_child: treeview = &adw::PreferencesPage {
+                        add: attrgroup = &adw::PreferencesGroup {
+                            set_title: "Attributes",
+                            #[track(model.changed(AppModel::position()))]
+                            set_visible: !model.attributes.is_empty() || model.nameorstar != AddAttrOptions::None,
+                            #[local_ref]
+                            add = attrlistbox -> gtk::ListBox {
+                                add_css_class: "boxed-list",
+                                set_selection_mode: gtk::SelectionMode::None,
+                                append: addrow = &adw::PreferencesRow { // Change to suffix once libadwaita-rs 0.2 is out
+                                    #[track(model.changed(AppModel::nameorstar()))]
+                                    set_visible: model.nameorstar != AddAttrOptions::None,
+                                    set_title: "<ADD>",
+                                    #[wrap(Some)]
+                                    set_child = &gtk::Box {
+                                        set_margin_all: 15,
+                                        append = &gtk::Image {
+                                            set_halign: gtk::Align::Center,
+                                            set_hexpand: true,
+                                            set_icon_name: Some("list-add-symbolic"),
+                                            add_css_class: "accent",
+                                        }
+                                    }
+                                },
+                                // factory!(model.attributes),
+                                connect_row_activated[sender] => move |_, y| {
+                                    if let Ok(l) = y.clone().downcast::<adw::PreferencesRow>() {
+                                        if l.title() != "<ADD>" {
+                                            let text = l.title().to_string();
+                                            let v = text.split('.').map(|x| x.to_string()).collect::<Vec<String>>();
+                                            send!(sender, AppMsg::MoveToRow(v));
+                                        } else {
+                                            send!(sender, AppMsg::AddAttr);
+                                        }
+                                    }
+                                },
+                            },
+                        },
+                        add = &adw::PreferencesGroup {
+                            set_title: "Options",
+                            #[track(model.changed(AppModel::position()))]
+                            set_visible: !model.options.is_empty(),
+                            #[local_ref]
+                            add = optlistbox -> gtk::ListBox {
+                                add_css_class: "boxed-list",
+                                set_selection_mode: gtk::SelectionMode::None,
+                                connect_row_activated[sender] => move |_, y| {
+                                     if let Ok(l) = y.clone().downcast::<adw::PreferencesRow>() {
+                                        let text = l.title().to_string();
+                                        let v = text.split('.').map(|x| x.to_string()).collect::<Vec<String>>();
+                                        sender.input(AppMsg::OpenOptionRow(v))
+                                     }
+                                },
+                            },
+                        }
+                    },
+                    add_child: optpage = &gtk::Box {
+                        append: model.optionpage.widget()
+                    },
+                    add_titled: (model.searchpage.widget(), Some("SearchPage"), "SearchPage")
+                }
+            },
+        }
+    }
+
+    menu! {
+        main_menu: {
+            "Preferences" => PreferencesAction,
+            "About" => AboutAction,
+        }
+    }
+
+    fn pre_view() {
+        buttonsbox.remove(homebtn);
+        buttonsbox.prepend(homebtn);
+        if !model.search {
+            search.set_text("");
+            match model.page {
+                Page::List => stack.set_visible_child(treeview),
+                Page::Option => stack.set_visible_child(optpage), //stack.set_visible_child(&stack.child_by_name("OptPage").unwrap()),
+                Page::Loading => stack.set_visible_child(loading),
+            }
+        } else {
+            stack.set_visible_child(&stack.child_by_name("SearchPage").unwrap());
+        }
+        match model.header {
+            HeaderBar::Title => headerstack.set_visible_child(title),
+            HeaderBar::List => headerstack.set_visible_child(buttons),
+            HeaderBar::Search => {
+                headerstack.set_visible_child(search);
+                let _ = search.grab_focus();
+            }
+        }
+    }
+
+    fn init(
+        application: Self::InitParams,
+        root: &Self::Root,
+        sender: &ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let windowloading = WindowAsyncHandler::builder()
+            .detach_worker(())
+            .forward(sender.input_sender(), identity);
+        let loaderror = LoadErrorModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let optionpage = OptPageModel::builder()
+            .launch(())
+            .forward(sender.input_sender(), identity);
+        let searchpage = SearchPageModel::builder()
+            .launch(())
+            .forward(sender.input_sender(), identity);
+        let saveerror = SaveErrorModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let about = AboutModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let preferences = PrefModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let rebuild = RebuildModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let welcome = WelcomeModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let nameentry = NameEntryModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let searchpageentry = SearchEntryModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
+        let quitdialog = QuitCheckModel::builder()
+            .launch(QuitInit {
+                window: root.clone().upcast(),
+                app: application.clone(),
+            })
+            .forward(sender.input_sender(), identity);
+
+        windowloading.emit(WindowAsyncHandlerMsg::GetConfigPath);
+
+        let model = AppModel {
+            application,
+            position: vec![],
+            refposition: vec![],
+            tree: AttrTree::default(),
+            attributes: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            options: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            posbtn: FactoryVecDeque::new(
+                gtk::Box::new(gtk::Orientation::Horizontal, 0),
+                &sender.input,
+            ),
+            conf: HashMap::new(),
+            page: Page::Loading,
+            search: false,
+            busy: true,
+            header: HeaderBar::Title,
+            data: HashMap::new(),
+            editedopts: HashMap::new(),
+            nameattrs: HashMap::new(),
+            starattrs: HashMap::new(),
+            configpath: String::from("/etc/nixos/configuration.nix"),
+            flake: None,
+            scheme: None,
+            fieldreplace: HashMap::new(),
+            nameorstar: AddAttrOptions::None,
+            windowloading,
+            loaderror,
+            optionpage,
+            searchpage,
+            saveerror,
+            about,
+            preferences,
+            rebuild,
+            welcome,
+            nameentry,
+            searchpageentry,
+            quitdialog,
+            tracker: 0,
+        };
+        let attrlistbox = model.attributes.widget();
+        let optlistbox = model.options.widget();
+        let buttonsbox = model.posbtn.widget();
+        let homebtn = gtk::Button::new();
+        let widgets = view_output!();
+
+        {
+            let group = RelmActionGroup::<MenuActionGroup>::new();
+            let sender = sender.clone();
+            let prefaction: RelmAction<PreferencesAction> = RelmAction::new_stateless(move |_| {
+                send!(sender, AppMsg::ShowPrefMenu);
+            });
+
+            let aboutsender = model.about.sender().clone();
+            let aboutaction: RelmAction<AboutAction> = RelmAction::new_stateless(move |_| {
+                aboutsender.send(AboutMsg::Show);
+            });
+            group.add_action(prefaction);
+            group.add_action(aboutaction);
+            let actions = group.into_action_group();
+            widgets
+                .main_window
+                .insert_action_group("menu", Some(&actions));
+        }
+        {
+            let sender = sender.clone();
+            let group = RelmActionGroup::<WindowActionGroup>::new();
+            let searchaction: RelmAction<SearchAction> = RelmAction::new_stateless(move |_| {
+                send!(sender, AppMsg::ToggleSearch);
+            });
+            group.add_action(searchaction);
+            let actions = group.into_action_group();
+            widgets
+                .main_window
+                .insert_action_group("window", Some(&actions));
+        }
+        {
+            let sender = sender.clone();
+            adw::StyleManager::default()
+                .connect_dark_notify(move |x| send!(sender, AppMsg::SetDarkMode(x.is_dark())));
+        }
+        send!(
+            sender,
+            AppMsg::SetDarkMode(adw::StyleManager::default().is_dark())
+        );
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
         self.reset();
         match msg {
             AppMsg::Welcome => {
                 info!("Received AppMsg::Welcome");
-                send!(components.welcome.sender(), WelcomeMsg::Show);
+                self.welcome.emit(WelcomeMsg::Show);
             }
             AppMsg::InitialLoad(x) => {
                 info!("Received AppMsg::InitialLoad");
                 self.set_data(x.data);
                 self.set_tree(x.tree);
                 self.set_conf(x.conf);
-                trace!("CONF:\n{:#?}", self.conf);
+                // trace!("CONF:\n{:#?}", self.conf);
                 self.update_position(|x| x.clear());
                 let options = self
                     .data
@@ -169,38 +518,35 @@ impl AppUpdate for AppModel {
                     .map(|(k, data)| {
                         let mut v = k.split('.').map(|x| x.to_string()).collect::<Vec<_>>();
                         let attr = v.pop().unwrap_or_default();
-                        (k.to_string(), opconfigured(&self.conf, &v, attr), data.description.to_string())
+                        (
+                            k.to_string(),
+                            opconfigured(&self.conf, &v, attr),
+                            data.description.to_string(),
+                        )
                     })
                     .collect::<Vec<_>>();
-                send!(
-                    components.searchpage.sender(),
-                    SearchPageMsg::LoadOptions(options)
-                );
+                self.searchpage.emit(SearchPageMsg::LoadOptions(options));
                 self.set_busy(false);
-                send!(sender, AppMsg::MoveTo(vec![], vec![]));
+                sender.input(AppMsg::MoveTo(vec![], vec![]));
             }
             AppMsg::LoadError(s, s2) => {
                 info!("Received AppMsg::LoadError");
                 self.set_busy(false);
-                send!(components.loaderror.sender(), LoadErrorMsg::Show(s, s2));
+                self.loaderror.emit(LoadErrorMsg::Show(s, s2));
             }
             AppMsg::TryLoad => {
                 info!("Received AppMsg::TryLoad");
                 self.set_busy(true);
-                components
-                    .windowloading
-                    .sender()
-                    .blocking_send(WindowAsyncHandlerMsg::RunWindow(
-                        self.configpath.to_string(),
-                    ))
-                    .unwrap();
+                self.windowloading.emit(WindowAsyncHandlerMsg::RunWindow(
+                    self.configpath.to_string(),
+                ));
             }
             AppMsg::Close => {
                 info!("Received AppMsg::Close");
                 if self.editedopts.is_empty() {
-                    relm4::gtk_application().quit();
+                    self.application.quit();
                 } else {
-                    send!(components.quitdialog.sender(), QuitCheckMsg::Show);
+                    self.quitdialog.emit(QuitCheckMsg::Show);
                 }
             }
             AppMsg::SetConfPath(s, b) => {
@@ -209,22 +555,32 @@ impl AppUpdate for AppModel {
                 self.set_page(Page::Loading);
                 self.set_configpath(s.clone());
                 self.set_flake(b.clone());
-                components
-                    .windowloading
-                    .sender()
-                    .blocking_send(WindowAsyncHandlerMsg::SetConfig(s, b))
-                    .unwrap();
+                self.windowloading
+                    .emit(WindowAsyncHandlerMsg::SetConfig(s, b));
             }
             AppMsg::MoveToSelf => {
                 info!("Received AppMsg::MoveToSelf");
-                send!(sender, AppMsg::MoveTo(self.position.clone(), self.refposition.clone()));
+                send!(
+                    sender,
+                    AppMsg::MoveTo(self.position.clone(), self.refposition.clone())
+                );
             }
             AppMsg::MoveToRow(pos) => {
                 info!("Received AppMsg::MoveToRow");
-                match self.attributes.iter().find(|x| x.value == pos) {
+
+                let attributes_guard = self.attributes.guard();
+                let mut attrvec = vec![];
+                for i in 0..attributes_guard.len() {
+                    attrvec.push(attributes_guard.get(i).unwrap());
+                }
+
+                match attrvec.iter().find(|x| x.value == pos) {
                     Some(x) => {
                         debug!("FOUND ATTR: {:?}", x);
-                        send!(sender, AppMsg::MoveTo(x.value.to_vec(), x.refvalue.to_vec()));
+                        send!(
+                            sender,
+                            AppMsg::MoveTo(x.value.to_vec(), x.refvalue.to_vec())
+                        );
                     }
                     None => {
                         error!("Received AppMsg::MoveToRow, but no attribute found");
@@ -235,7 +591,14 @@ impl AppUpdate for AppModel {
                 info!("Received AppMsg::MoveTo");
                 debug!("Moving to {:?}", pos);
                 let mut p = pos.clone();
-                if let Some(x) = self.attributes.iter().find(|x| x.value.eq(&pos)) {
+                let mut attributes_guard = self.attributes.guard();
+                let mut options_guard = self.options.guard();
+                let mut posbtn_guard = self.posbtn.guard();
+                let mut attrvec = vec![];
+                for i in 0..attributes_guard.len() {
+                    attrvec.push(attributes_guard.get(i).unwrap().clone());
+                }
+                if let Some(x) = attrvec.iter().find(|x| x.value.eq(&pos)) {
                     if let Some(y) = &x.replacefor {
                         p.pop();
                         p.push(String::from(y));
@@ -248,26 +611,26 @@ impl AppUpdate for AppModel {
                     Some(x) => {
                         let mut sortedoptions = x.options.clone();
                         sortedoptions.sort();
-                        self.options.clear();
+                        options_guard.clear();
                         for op in sortedoptions {
                             let mut o = pos.to_vec();
                             let mut r = newref.to_vec();
                             o.push(op.to_string());
                             r.push(op.to_string());
-                            self.options.push(OptPos {
+                            options_guard.push_back(OptPos {
                                 value: o,
                                 refvalue: r,
-                                configured: opconfigured2(
+                                configured: if pos.eq(&newref) { opconfigured(&self.conf, &pos, op.clone()) } else { opconfigured2(
                                     &self.configpath,
                                     &pos,
                                     &newref,
                                     op.clone(),
-                                ),
+                                ) },
                                 modified: opconfigured(&self.editedopts, &pos, op),
                             });
                         }
-                        self.attributes.clear();
-                        let mut attributes = FactoryVec::new();
+                        attributes_guard.clear();
+                        let mut attributes = Vec::new();
                         let mut hasnameorstar = AddAttrOptions::None;
                         debug!("ATTRS {:?}", x.attributes.keys());
                         for attr in x.attributes.keys().collect::<Vec<_>>() {
@@ -299,7 +662,11 @@ impl AppUpdate for AppModel {
                                             value: p,
                                             refvalue: r,
                                             configured: false,
-                                            modified: opconfigured(&self.editedopts, &pos, a.to_string()),
+                                            modified: opconfigured(
+                                                &self.editedopts,
+                                                &pos,
+                                                a.to_string(),
+                                            ),
                                             replacefor: Some(String::from("<name>")),
                                         })
                                     }
@@ -352,12 +719,12 @@ impl AppUpdate for AppModel {
                                 attributes.push(AttrPos {
                                     value: p,
                                     refvalue: r,
-                                    configured: opconfigured2(
+                                    configured: if pos.eq(&newref) { opconfigured(&self.conf, &pos, attr.to_string()) } else { opconfigured2(
                                         &self.configpath,
                                         &pos,
                                         &newref,
                                         attr.to_string(),
-                                    ),
+                                    ) },
                                     modified: opconfigured(
                                         &self.editedopts,
                                         &newref,
@@ -368,38 +735,46 @@ impl AppUpdate for AppModel {
                             }
                         }
                         if !pos.is_empty() {
-                            self.posbtn.clear();
+                            posbtn_guard.clear();
                             let mut pref = vec![];
                             let mut rref = vec![];
                             for i in 0..pos.len() {
                                 pref.push(pos[i].clone());
                                 rref.push(newref[i].clone());
-                                self.posbtn.push(AttrBtn {
+                                posbtn_guard.push_back(AttrBtn {
                                     value: pref.to_vec(),
                                     refvalue: rref.to_vec(),
                                     opt: false,
                                 });
                             }
                         }
-                        let mut x = attributes.into_vec();
+
+                        let mut x = attributes.to_vec();
                         x.sort_by(|x, y| x.value.cmp(&y.value));
                         for attr in x {
-                            self.attributes.push(attr);
+                            attributes_guard.push_back(attr.clone());
                         }
                         debug!("Setting HNOS {:?}", hasnameorstar);
-                        self.set_nameorstar(hasnameorstar);
-                        self.set_position(pos);
-                        self.set_refposition(newref);
+                        self.nameorstar = hasnameorstar;
+                        self.position = pos;
+                        self.refposition = newref;
                     }
                     None => {}
                 }
                 if self.position.is_empty() {
-                    self.set_header(HeaderBar::Title);
+                    self.header = HeaderBar::Title;
                 } else {
-                    self.set_header(HeaderBar::List);
+                    self.header = HeaderBar::List;
                 }
+
+                attributes_guard.drop();
+                options_guard.drop();
+                posbtn_guard.drop();
                 self.set_page(Page::List);
                 self.update_position(|_| ());
+                self.update_refposition(|_| ());
+                self.update_nameorstar(|_| ());
+                self.update_header(|_| ());
             }
             AppMsg::OpenOption(pos, newref) if !self.busy => {
                 info!("Received AppMsg::OpenOption");
@@ -408,7 +783,7 @@ impl AppUpdate for AppModel {
                     Some(x) => x,
                     None => {
                         error!("No data for {:?}", newref);
-                        return true;
+                        return;
                     }
                 };
 
@@ -425,19 +800,25 @@ impl AppUpdate for AppModel {
                     trace!("EMPTY");
                     String::default()
                 };
-                components
-                    .optionpage
-                    .send(OptPageMsg::UpdateOption(
-                        Box::new(d.clone()),
-                        pos.to_vec(),
-                        newref.to_vec(),
-                        conf,
-                        self.data.keys().map(|x| x.to_string()).collect::<Vec<String>>(),
-                    ))
-                    .unwrap();
-                self.options.clear();
-                self.attributes.clear();
-                self.posbtn.clear();
+
+                self.optionpage.emit(OptPageMsg::UpdateOption(
+                    Box::new(d.clone()),
+                    pos.to_vec(),
+                    newref.to_vec(),
+                    conf,
+                    self.data
+                        .keys()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<String>>(),
+                ));
+
+                let mut attributes_guard = self.attributes.guard();
+                let mut options_guard = self.options.guard();
+                let mut posbtn_guard = self.posbtn.guard();
+
+                options_guard.clear();
+                attributes_guard.clear();
+                posbtn_guard.clear();
                 let mut pref = vec![];
                 let mut rref = vec![];
                 let mut p2 = pos.clone();
@@ -447,17 +828,22 @@ impl AppUpdate for AppModel {
                 for i in 0..p2.len() {
                     pref.push(p2[i].clone());
                     rref.push(r2[i].clone());
-                    self.posbtn.push(AttrBtn {
+                    posbtn_guard.push_back(AttrBtn {
                         value: pref.to_vec(),
                         refvalue: rref.to_vec(),
                         opt: false,
                     });
                 }
-                self.posbtn.push(AttrBtn {
+                posbtn_guard.push_back(AttrBtn {
                     value: pos.to_vec(),
                     refvalue: newref.to_vec(),
                     opt: true,
                 });
+
+                attributes_guard.drop();
+                options_guard.drop();
+                posbtn_guard.drop();
+
                 self.set_position(pos);
                 self.set_refposition(newref);
                 self.set_header(HeaderBar::List);
@@ -466,9 +852,18 @@ impl AppUpdate for AppModel {
             }
             AppMsg::OpenOptionRow(pos) => {
                 info!("Received AppMsg::OpenOptionRow");
-                match self.options.iter().find(|x| x.value == pos) {
+                let options_guard = self.options.guard();
+                let mut optvec = vec![];
+                for i in 0..options_guard.len() {
+                    optvec.push(options_guard.get(i).unwrap())
+                }
+
+                match optvec.iter().find(|x| x.value == pos) {
                     Some(x) => {
-                        send!(sender, AppMsg::OpenOption(x.value.to_vec(), x.refvalue.to_vec()));
+                        send!(
+                            sender,
+                            AppMsg::OpenOption(x.value.to_vec(), x.refvalue.to_vec())
+                        );
                     }
                     None => {
                         error!("Received AppMsg::OpenOptionRow, but no options found");
@@ -498,10 +893,7 @@ impl AppUpdate for AppModel {
             }
             AppMsg::ShowSearchPage(s) if !self.busy => {
                 info!("Received AppMsg::ShowSearchPage");
-                components
-                    .searchpage
-                    .send(SearchPageMsg::Search(s))
-                    .unwrap();
+                self.searchpage.emit(SearchPageMsg::Search(s));
                 self.set_search(true)
             }
             AppMsg::HideSearchPage => {
@@ -511,7 +903,13 @@ impl AppUpdate for AppModel {
             AppMsg::ShowSearchPageEntry(pos) => {
                 info!("Received AppMsg::ShowSearchPageEntry");
                 // Input a string of the form "service.<name>.groups.*.uid" and return a vector of all possible existing options for that string.
-                fn getposdata(pos: &Vec<String>, conf: &HashMap<String, String>, nameattrs: &HashMap<String, Vec<String>>, starattrs: &HashMap<String, usize>, configpath: &str) -> Vec<Vec<String>> {
+                fn getposdata(
+                    pos: &Vec<String>,
+                    conf: &HashMap<String, String>,
+                    nameattrs: &HashMap<String, Vec<String>>,
+                    starattrs: &HashMap<String, usize>,
+                    configpath: &str,
+                ) -> Vec<Vec<String>> {
                     for i in 0..pos.len() {
                         if pos[i] == "<name>" {
                             let mut possiblevals = getconfvals(conf, &pos[..i]);
@@ -522,7 +920,9 @@ impl AppUpdate for AppModel {
                             for x in possiblevals {
                                 let mut newpos = pos.clone();
                                 newpos[i] = x.clone();
-                                out.append(&mut getposdata(&newpos, conf, nameattrs, starattrs, configpath));
+                                out.append(&mut getposdata(
+                                    &newpos, conf, nameattrs, starattrs, configpath,
+                                ));
                             }
                             return out;
                         } else if pos[i] == "*" {
@@ -535,7 +935,9 @@ impl AppUpdate for AppModel {
                             for j in 0..n {
                                 let mut newpos = pos.clone();
                                 newpos[i] = j.to_string();
-                                out.append(&mut getposdata(&newpos, conf, nameattrs, starattrs, configpath));
+                                out.append(&mut getposdata(
+                                    &newpos, conf, nameattrs, starattrs, configpath,
+                                ));
                             }
                             return out;
                         }
@@ -543,8 +945,17 @@ impl AppUpdate for AppModel {
                     return vec![pos.to_vec()];
                 }
 
-                let data = getposdata(&pos, &self.conf, &self.nameattrs, &self.starattrs, &self.configpath).iter().map(|x| x.join(".")).collect::<Vec<String>>();
-                send!(components.searchpageentry.sender(), SearchEntryMsg::Show(pos, data));
+                let data = getposdata(
+                    &pos,
+                    &self.conf,
+                    &self.nameattrs,
+                    &self.starattrs,
+                    &self.configpath,
+                )
+                .iter()
+                .map(|x| x.join("."))
+                .collect::<Vec<String>>();
+                self.searchpageentry.emit(SearchEntryMsg::Show(pos, data));
             }
             AppMsg::SetBusy(b) => {
                 info!("Received AppMsg::SetBusy");
@@ -552,18 +963,16 @@ impl AppUpdate for AppModel {
             }
             AppMsg::SaveError(msg) => {
                 info!("Received AppMsg::SaveError");
-                components.saveerror.send(SaveErrorMsg::Show(msg)).unwrap()
+                self.saveerror.emit(SaveErrorMsg::Show(msg))
             }
             AppMsg::SaveWithError => {
                 info!("Received AppMsg::SaveWithError");
-                components
-                    .optionpage
-                    .send(OptPageMsg::DoneSaving(true, "true\n".to_string()))
-                    .unwrap()
+                self.optionpage
+                    .emit(OptPageMsg::DoneSaving(true, "true\n".to_string()))
             }
             AppMsg::SaveErrorReset => {
                 info!("Received AppMsg::SaveErrorReset");
-                components.optionpage.send(OptPageMsg::ResetConf).unwrap()
+                self.optionpage.emit(OptPageMsg::ResetConf)
             }
             AppMsg::EditOpt(opt, value) => {
                 info!("Received AppMsg::EditOpt");
@@ -578,26 +987,27 @@ impl AppUpdate for AppModel {
                 let conf = match config::editconfigpath(&self.configpath, self.editedopts.clone()) {
                     Ok(x) => x,
                     Err(e) => {
-                        components
-                            .rebuild
-                            .send(RebuildMsg::FinishError(Some(format!(
-                                "Error modifying configuration file.\n{}",
-                                e
-                            ))))
-                            .unwrap();
-                        return true;
+                        self.rebuild.emit(RebuildMsg::FinishError(Some(format!(
+                            "Error modifying configuration file.\n{}",
+                            e
+                        ))));
+                        return;
                     }
                 };
-                send!(
-                    components.rebuild.sender(),
-                    RebuildMsg::Rebuild(conf, self.configpath.to_string(), self.flake.clone())
-                );
+                self.rebuild.emit(RebuildMsg::Rebuild(
+                    conf,
+                    self.configpath.to_string(),
+                    self.flake.clone(),
+                ));
             }
             AppMsg::ResetConfig => {
                 info!("Received AppMsg::ResetConfig");
                 self.update_editedopts(|x| x.clear());
                 if self.page == Page::Option {
-                    send!(sender, AppMsg::OpenOption(self.position.clone(), self.refposition.clone()));
+                    send!(
+                        sender,
+                        AppMsg::OpenOption(self.position.clone(), self.refposition.clone())
+                    );
                 }
             }
             AppMsg::SaveConfig => {
@@ -616,7 +1026,7 @@ impl AppUpdate for AppModel {
                                 )
                             )
                         );
-                        return true;
+                        return;
                     }
                 };
                 self.set_conf(conf);
@@ -626,45 +1036,38 @@ impl AppUpdate for AppModel {
             }
             AppMsg::ShowPrefMenu => {
                 info!("Received AppMsg::ShowPrefMenu");
-                send!(
-                    components.preferences.sender(),
-                    PrefMsg::Show(self.configpath.to_string(), self.flake.clone())
-                );
+                self.preferences.emit(PrefMsg::Show(
+                    self.configpath.to_string(),
+                    self.flake.clone(),
+                ));
             }
             AppMsg::SetDarkMode(dark) => {
                 info!("Received AppMsg::SetDarkMode");
                 let scheme = if dark { "Adwaita-dark" } else { "Adwaita" };
-                send!(
-                    components.optionpage.sender(),
-                    OptPageMsg::SetScheme(scheme.to_string())
-                );
-                send!(
-                    components.saveerror.sender(),
-                    SaveErrorMsg::SetScheme(scheme.to_string())
-                );
-                send!(
-                    components.rebuild.sender(),
-                    RebuildMsg::SetScheme(scheme.to_string())
-                );
+                self.optionpage
+                    .emit(OptPageMsg::SetScheme(scheme.to_string()));
+                self.saveerror
+                    .emit(SaveErrorMsg::SetScheme(scheme.to_string()));
+                self.rebuild.emit(RebuildMsg::SetScheme(scheme.to_string()));
                 self.set_scheme(sourceview5::StyleSchemeManager::default().scheme(scheme));
             }
             AppMsg::AddAttr => {
                 info!("Received AppMsg::AddAttr");
+                let attributes_guard = self.attributes.guard();
+                let mut attrvec = vec![];
+                for i in 0..attributes_guard.len() {
+                    attrvec.push(attributes_guard.get(i).unwrap().clone());
+                }
+                attributes_guard.drop();
+
                 match self.nameorstar {
-                    AddAttrOptions::Name => {
-                        components
-                            .nameentry
-                            .send(NameEntryMsg::Show(
-                                self.position.join("."),
-                                self.attributes
-                                    .iter()
-                                    .map(|x| {
-                                        x.value.last().unwrap_or(&String::default()).to_string()
-                                    })
-                                    .collect::<Vec<_>>(),
-                            ))
-                            .unwrap();
-                    }
+                    AddAttrOptions::Name => self.nameentry.emit(NameEntryMsg::Show(
+                        self.position.join("."),
+                        attrvec
+                            .iter()
+                            .map(|x| x.value.last().unwrap_or(&String::default()).to_string())
+                            .collect::<Vec<_>>(),
+                    )),
                     AddAttrOptions::Star => {
                         let pos = self.position.join(".");
                         self.update_starattrs(|x| {
@@ -707,258 +1110,29 @@ impl AppUpdate for AppModel {
             }
             AppMsg::OpenSearchOption(pos, refpos) => {
                 info!("Received AppMsg::OpenSearchOption");
-                send!(components.searchpage.sender(), SearchPageMsg::OpenOption(pos, Some(refpos)));
+                self.searchpage
+                    .emit(SearchPageMsg::OpenOption(pos, Some(refpos)));
             }
             AppMsg::SaveQuit => {
                 info!("Received AppMsg::SaveQuit");
                 let conf = match config::editconfigpath(&self.configpath, self.editedopts.clone()) {
                     Ok(x) => x,
                     Err(e) => {
-                        components
-                            .rebuild
-                            .send(RebuildMsg::FinishError(Some(format!(
-                                "Error modifying configuration file.\n{}",
-                                e
-                            ))))
-                            .unwrap();
-                        return true;
+                        self.rebuild.emit(RebuildMsg::FinishError(Some(format!(
+                            "Error modifying configuration file.\n{}",
+                            e
+                        ))));
+                        return;
                     }
                 };
-                send!(
-                    components.rebuild.sender(),
-                    RebuildMsg::WriteConfigQuit(conf, self.configpath.to_string())
-                );
+                self.rebuild.emit(RebuildMsg::WriteConfigQuit(
+                    conf,
+                    self.configpath.to_string(),
+                ));
                 self.editedopts.clear();
             }
             _ => {}
         }
-        true
-    }
-}
-
-#[relm4::widget(pub)]
-impl Widgets<AppModel, ()> for AppWidgets {
-    view! {
-        main_window = adw::ApplicationWindow {
-            set_default_width: 1000,
-            set_default_height: 650,
-            //add_css_class: "devel",
-            set_sensitive: watch!(!model.busy),
-            connect_close_request(sender) => move |_| {
-                debug!("Caught close request");
-                send!(sender, AppMsg::Close);
-                gtk::Inhibit(true)
-            },
-            set_content: main_box = Some(&gtk::Box) {
-                set_orientation: gtk::Orientation::Vertical,
-
-                append = &adw::HeaderBar {
-                    set_title_widget: headerstack = Some(&gtk::Stack) {
-                        set_transition_type: gtk::StackTransitionType::Crossfade,
-                        add_child: title = &gtk::Label {
-                            set_label: "NixOS Configuration Editor",
-                        },
-                        add_child: buttons = &gtk::Box {
-                            set_orientation: gtk::Orientation::Horizontal,
-                            set_halign: gtk::Align::Center,
-                            add_css_class: "linked",
-                            append = &gtk::Button {
-                                set_icon_name: "user-home-symbolic",
-                                connect_clicked(sender) => move |_| {
-                                    send!(sender, AppMsg::MoveTo(vec![], vec![]))
-                                },
-                            },
-                            factory!(model.posbtn),
-                        },
-                        add_child: search = &gtk::SearchEntry {
-                                add_css_class: "inline",
-                                set_placeholder_text: Some("Search"),
-                                set_halign: gtk::Align::Center,
-                                set_max_width_chars: 57,
-                                //set_search_delay: 500, // Change once gtk4-rs 4.8 is out
-                                connect_search_changed(sender) => move |x| {
-                                    if x.text().is_empty() {
-                                        send!(sender, AppMsg::HideSearchPage);
-                                    } else {
-                                        send!(sender, AppMsg::ShowSearchPage(x.text().to_string()));
-                                    }
-                                },
-                        },
-                    },
-                    pack_end: menubtn = &gtk::MenuButton {
-                        set_icon_name: "view-more-symbolic",
-                        set_menu_model: Some(&main_menu),
-                    },
-                    pack_end = &gtk::ToggleButton {
-                        set_active: track!(model.changed(AppModel::position()), false),
-                        set_active: track!(model.changed(AppModel::header()), model.header == HeaderBar::Search),
-                        set_icon_name: "edit-find-symbolic",
-                        connect_toggled(sender) => move |x| {
-                            send!(sender, {
-                                if x.is_active() {
-                                    AppMsg::ShowSearch
-                                } else {
-                                    AppMsg::HideSearch
-                                }
-                            });
-                        },
-                    },
-                    pack_start = &gtk::Button {
-                        set_label: "Rebuild",
-                        connect_clicked(sender) => move |_| {
-                            send!(sender, AppMsg::Rebuild);
-                        },
-                    }
-                },
-                append: stack = &gtk::Stack {
-                    set_transition_type: gtk::StackTransitionType::Crossfade,
-                    add_child: loading = &gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_halign: gtk::Align::Center,
-                        set_valign: gtk::Align::Center,
-                        set_spacing: 10,
-                        append = &gtk::Spinner {
-                            set_spinning: true,
-                            set_height_request: 80,
-                        },
-                        append = &gtk::Label {
-                            set_label: "Loading...",
-                        },
-                    },
-                    add_child: treeview = &adw::PreferencesPage {
-                        add: attrgroup = &adw::PreferencesGroup {
-                            set_title: "Attributes",
-                            set_visible: track!(model.changed(AppModel::position()), !model.attributes.is_empty() || model.nameorstar != AddAttrOptions::None),
-                            add = &gtk::ListBox {
-                                add_css_class: "boxed-list",
-                                set_selection_mode: gtk::SelectionMode::None,
-                                append: addrow = &adw::PreferencesRow { // Change to suffix once libadwaita-rs 0.2 is out
-                                    set_visible: track!(model.changed(AppModel::nameorstar()), model.nameorstar != AddAttrOptions::None),
-                                    set_title: "<ADD>",
-                                    set_child = Some(&gtk::Box) {
-                                        set_margin_all: 15,
-                                        append = &gtk::Image {
-                                            set_halign: gtk::Align::Center,
-                                            set_hexpand: true,
-                                            set_icon_name: Some("list-add-symbolic"),
-                                            add_css_class: "accent",
-                                        }
-                                    }
-                                },
-                                factory!(model.attributes),
-                                connect_row_activated(sender) => move |_, y| {
-                                    if let Ok(l) = y.clone().downcast::<adw::PreferencesRow>() {
-                                        if l.title() != "<ADD>" {
-                                            let text = l.title().to_string();
-                                            let v = text.split('.').map(|x| x.to_string()).collect::<Vec<String>>();
-                                            send!(sender, AppMsg::MoveToRow(v));
-                                        } else {
-                                            send!(sender, AppMsg::AddAttr);
-                                        }
-                                    }
-                                },
-                            },
-                        },
-                        add = &adw::PreferencesGroup {
-                            set_title: "Options",
-                            set_visible: track!(model.changed(AppModel::position()), !model.options.is_empty()),
-                            add = &gtk::ListBox {
-                                add_css_class: "boxed-list",
-                                set_selection_mode: gtk::SelectionMode::None,
-                                factory!(model.options),
-                                connect_row_activated(sender) => move |_, y| {
-                                     if let Ok(l) = y.clone().downcast::<adw::PreferencesRow>() {
-                                        let text = l.title().to_string();
-                                        let v = text.split('.').map(|x| x.to_string()).collect::<Vec<String>>();
-                                        send!(sender, AppMsg::OpenOptionRow(v))
-                                     }
-                                },
-                            },
-                        }
-                    },
-                    add_titled(Some("OptPage"), "OptPage"): components.optionpage.root_widget(),
-                    add_titled(Some("SearchPage"), "SearchPage"): components.searchpage.root_widget(),
-                }
-            },
-        }
-    }
-
-    menu! {
-        main_menu: {
-            "Preferences" => PreferencesAction,
-            "About" => AboutAction,
-        }
-    }
-
-    fn pre_init() {
-        components
-            .windowloading
-            .sender()
-            .blocking_send(WindowAsyncHandlerMsg::GetConfigPath)
-            .unwrap();
-    }
-
-    fn pre_view() {
-        if !model.search {
-            self.search.set_text("");
-            match model.page {
-                Page::List => self.stack.set_visible_child(&self.treeview),
-                Page::Option => self
-                    .stack
-                    .set_visible_child(&self.stack.child_by_name("OptPage").unwrap()),
-                Page::Loading => self.stack.set_visible_child(&self.loading),
-            }
-        } else {
-            self.stack
-                .set_visible_child(&self.stack.child_by_name("SearchPage").unwrap());
-        }
-        match model.header {
-            HeaderBar::Title => self.headerstack.set_visible_child(&self.title),
-            HeaderBar::List => self.headerstack.set_visible_child(&self.buttons),
-            HeaderBar::Search => {
-                self.headerstack.set_visible_child(&self.search);
-                let _ = self.search.grab_focus();
-            }
-        }
-    }
-
-    fn post_init() {
-        let app = relm4::gtk_application();
-        {
-            let group = RelmActionGroup::<MenuActionGroup>::new();
-            let aboutsender = components.about.sender();
-            let sender = sender.clone();
-            let prefaction: RelmAction<PreferencesAction> = RelmAction::new_stateless(move |_| {
-                send!(sender, AppMsg::ShowPrefMenu);
-            });
-            let aboutaction: RelmAction<AboutAction> = RelmAction::new_stateless(move |_| {
-                send!(aboutsender, AboutMsg::Show);
-            });
-            group.add_action(prefaction);
-            group.add_action(aboutaction);
-            let actions = group.into_action_group();
-            main_window.insert_action_group("menu", Some(&actions));
-        }
-        {
-            let sender = sender.clone();
-            app.set_accelerators_for_action::<SearchAction>(&["<Control>f"]);
-            let group = RelmActionGroup::<WindowActionGroup>::new();
-            let searchaction: RelmAction<SearchAction> = RelmAction::new_stateless(move |_| {
-                send!(sender, AppMsg::ToggleSearch);
-            });
-            group.add_action(searchaction);
-            let actions = group.into_action_group();
-            main_window.insert_action_group("window", Some(&actions));
-        }
-        {
-            let sender = sender.clone();
-            adw::StyleManager::default()
-                .connect_dark_notify(move |x| send!(sender, AppMsg::SetDarkMode(x.is_dark())));
-        }
-        send!(
-            sender,
-            AppMsg::SetDarkMode(adw::StyleManager::default().is_dark())
-        );
     }
 }
 
@@ -970,32 +1144,8 @@ relm4::new_action_group!(WindowActionGroup, "window");
 relm4::new_stateless_action!(SearchAction, WindowActionGroup, "search");
 
 pub fn run() {
-    let model = AppModel {
-        position: vec![],
-        refposition: vec![],
-        tree: AttrTree::default(),
-        attributes: FactoryVec::new(),
-        options: FactoryVec::new(),
-        posbtn: FactoryVec::new(),
-        conf: HashMap::new(),
-        page: Page::Loading,
-        search: false,
-        busy: true,
-        header: HeaderBar::Title,
-        data: HashMap::new(),
-        editedopts: HashMap::new(),
-        nameattrs: HashMap::new(),
-        starattrs: HashMap::new(),
-        configpath: String::from("/etc/nixos/configuration.nix"),
-        flake: None,
-        scheme: None,
-        fieldreplace: HashMap::new(),
-        nameorstar: AddAttrOptions::None,
-        tracker: 0,
-    };
-    let app = RelmApp::with_app(model, adw::Application::new(
-        Some(crate::config::APP_ID),
-        adw::gio::ApplicationFlags::empty(),
-    ));
-    app.run();
+    let app = RelmApp::new(crate::config::APP_ID);
+    let application = app.app.clone();
+    application.set_accelerators_for_action::<SearchAction>(&["<Control>f"]);
+    app.run::<AppModel>(application);
 }

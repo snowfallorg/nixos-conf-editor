@@ -1,12 +1,14 @@
 use adw::prelude::*;
 use relm4::*;
-use super::window::{AppModel, AppMsg};
+use super::window::AppMsg;
 
 pub struct QuitCheckModel {
+    app: adw::Application,
     hidden: bool,
     busy: bool,
 }
 
+#[derive(Debug)]
 pub enum QuitCheckMsg {
     Show,
     Save,
@@ -14,27 +16,74 @@ pub enum QuitCheckMsg {
     Quit,
 }
 
-impl Model for QuitCheckModel {
-    type Msg = QuitCheckMsg;
-    type Widgets = QuitCheckWidgets;
-    type Components = ();
+pub struct QuitInit {
+    pub window: gtk::Window,
+    pub app: adw::Application,
 }
 
-impl ComponentUpdate<AppModel> for QuitCheckModel {
-    fn init_model(_parent_model: &AppModel) -> Self {
-        QuitCheckModel {
-            hidden: true,
-            busy: false,
+#[relm4::component(pub)]
+impl SimpleComponent for QuitCheckModel {
+    type InitParams = QuitInit;
+    type Input = QuitCheckMsg;
+    type Output = AppMsg;
+    type Widgets = QuitCheckWidgets;
+
+    view! {
+        dialog = gtk::MessageDialog {
+            set_transient_for: Some(&init.window),
+            set_modal: true,
+            #[watch]
+            set_visible: !model.hidden,
+            set_resizable: false,
+            #[watch]
+            set_sensitive: !model.busy,
+            set_text: Some("Save Changes?"),
+            set_secondary_text: Some("Unsaved changes will be lost. You should rebuild your system now to ensure you configured everything properly. You can also save your configuration, however is is possible that your configuration is save in an unbuildable state."),
+            set_default_width: 500,
+            add_button: ("Quit", gtk::ResponseType::Close),
+            add_button: ("Save", gtk::ResponseType::Reject),
+            add_button: ("Rebuild", gtk::ResponseType::Accept),
+            connect_response[sender] => move |_, resp| {
+                sender.input(match resp {
+                    gtk::ResponseType::Accept => QuitCheckMsg::Rebuild,
+                    gtk::ResponseType::Reject => QuitCheckMsg::Save,
+                    gtk::ResponseType::Close => QuitCheckMsg::Quit,
+                    _ => unreachable!(),
+                });
+            }
         }
     }
 
-    fn update(
-        &mut self,
-        msg: QuitCheckMsg,
-        _components: &(),
-        _sender: Sender<QuitCheckMsg>,
-        parent_sender: Sender<AppMsg>,
-    ) {
+    fn init(
+        init: Self::InitParams,
+        root: &Self::Root,
+        sender: &ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let model = QuitCheckModel {
+            app: init.app,
+            hidden: true,
+            busy: false,
+        };
+
+        let widgets = view_output!();
+
+        let rebuild_widget = widgets.dialog
+            .widget_for_response(gtk::ResponseType::Accept)
+            .expect("No button for accept response set");
+        rebuild_widget.add_css_class("suggested-action");
+        let save_widget = widgets.dialog
+            .widget_for_response(gtk::ResponseType::Reject)
+            .expect("No button for reject response set");
+        save_widget.add_css_class("warning");
+        let quit_widget = widgets.dialog
+            .widget_for_response(gtk::ResponseType::Close)
+            .expect("No button for close response set");
+        quit_widget.add_css_class("destructive-action");
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
         match msg {
             QuitCheckMsg::Show => {
                 self.hidden = false;
@@ -42,58 +91,15 @@ impl ComponentUpdate<AppModel> for QuitCheckModel {
             },
             QuitCheckMsg::Save => {
                 self.busy = true;
-                send!(parent_sender, AppMsg::SaveQuit);
+                sender.output(AppMsg::SaveQuit);
             },
             QuitCheckMsg::Rebuild => {
                 self.hidden = true;
-                send!(parent_sender, AppMsg::Rebuild);
+                sender.output(AppMsg::Rebuild);
             },
             QuitCheckMsg::Quit => {
-                relm4::gtk_application().quit();
+                self.app.quit()
             },
         }
-    }
-}
-
-
-#[relm4::widget(pub)]
-impl Widgets<QuitCheckModel, AppModel> for QuitCheckWidgets {
-    view! {
-        dialog = gtk::MessageDialog {
-            set_transient_for: parent!(Some(&parent_widgets.main_window)),
-            set_modal: true,
-            set_visible: watch!(!model.hidden),
-            set_resizable: false,
-            set_sensitive: watch!(!model.busy),
-            set_text: Some("Save Changes?"),
-            set_secondary_text: Some("Unsaved changes will be lost. You should rebuild your system now to ensure you configured everything properly. You can also save your configuration, however is is possible that your configuration is save in an unbuildable state."),
-            set_default_width: 500,
-            add_button: args!("Quit", gtk::ResponseType::Close),
-            add_button: args!("Save", gtk::ResponseType::Reject),
-            add_button: args!("Rebuild", gtk::ResponseType::Accept),
-            connect_response(sender) => move |_, resp| {
-                send!(sender, match resp {
-                    gtk::ResponseType::Accept => QuitCheckMsg::Rebuild,
-                    gtk::ResponseType::Reject => QuitCheckMsg::Save,
-                    gtk::ResponseType::Close => QuitCheckMsg::Quit,
-                    _ => unreachable!(),
-                });
-            },
-        }
-    }
-
-    fn post_init() {
-        let rebuild_widget = dialog
-            .widget_for_response(gtk::ResponseType::Accept)
-            .expect("No button for accept response set");
-        rebuild_widget.add_css_class("suggested-action");
-        let save_widget = dialog
-            .widget_for_response(gtk::ResponseType::Reject)
-            .expect("No button for reject response set");
-        save_widget.add_css_class("warning");
-        let quit_widget = dialog
-            .widget_for_response(gtk::ResponseType::Close)
-            .expect("No button for close response set");
-        quit_widget.add_css_class("destructive-action");
     }
 }

@@ -62,7 +62,7 @@ nix --extra-experimental-features "nix-command flakes" run github:vlinkz/nixos-c
 ## Debugging
 
 ```bash
-RUST_LOG=trace nixos-conf-editor
+RUST_LOG=nixos_conf_editor=trace nixos-conf-editor
 ```
 
 # Screenshots

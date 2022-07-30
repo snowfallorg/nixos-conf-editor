@@ -2,19 +2,17 @@ use std::collections::HashMap;
 
 use super::window::*;
 use adw::prelude::*;
-use relm4::{
-    factory::{FactoryPrototype, FactoryVec},
-    *,
-};
+use relm4::{factory::*, *};
 
 pub struct SearchEntryModel {
     hidden: bool,
     position: Vec<String>,
-    data: FactoryVec<SearchEntryOption>,
-    nameopts: FactoryVec<SearchNameEntryOption>,
+    data: FactoryVecDeque<gtk::ListBox, SearchEntryOption, SearchEntryMsg>,
+    nameopts: FactoryVecDeque<gtk::ListBox, SearchNameEntryOption, SearchEntryMsg>,
     customopt: Vec<String>,
 }
 
+#[derive(Debug)]
 pub enum SearchEntryMsg {
     Show(Vec<String>, Vec<String>),
     Close,
@@ -22,45 +20,117 @@ pub enum SearchEntryMsg {
     SetName(String, usize),
 }
 
-impl Model for SearchEntryModel {
-    type Msg = SearchEntryMsg;
+#[relm4::component(pub)]
+impl SimpleComponent for SearchEntryModel {
+    type InitParams = gtk::Window;
+    type Input = SearchEntryMsg;
+    type Output = AppMsg;
     type Widgets = SearchEntryWidgets;
-    type Components = ();
-}
 
-impl ComponentUpdate<AppModel> for SearchEntryModel {
-    fn init_model(_parent_model: &AppModel) -> Self {
-        SearchEntryModel {
-            hidden: true,
-            position: Vec::default(),
-            data: FactoryVec::new(),
-            nameopts: FactoryVec::new(),
-            customopt: Vec::default(),
+    view! {
+        window = gtk::Dialog {
+            set_default_height: -1,
+            #[wrap(Some)]
+            set_titlebar = &adw::HeaderBar {
+                add_css_class: "flat"
+            },
+            set_default_width: 500,
+            set_resizable: false,
+            set_transient_for: Some(&parent_window),
+            set_modal: true,
+            #[watch]
+            set_visible: !model.hidden,
+            connect_close_request[sender] => move |_| {
+                sender.input(SearchEntryMsg::Close);
+                gtk::Inhibit(true)
+            },
+            connect_visible_notify => move |x| {
+                if x.get_visible() {
+                    x.grab_focus();
+                }
+            },
+            #[wrap(Some)]
+            set_child: main_box = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                append = &adw::Clamp {
+                    #[wrap(Some)]
+                    set_child = &gtk::Box {
+                        set_margin_start: 15,
+                        set_margin_end: 15,
+                        set_spacing: 15,
+                        set_orientation: gtk::Orientation::Vertical,
+                        append = &adw::PreferencesGroup {
+                            #[local_ref]
+                            add = datalistbox -> gtk::ListBox {
+                                add_css_class: "boxed-list",
+                            },
+                            #[watch]
+                            set_visible: !model.data.is_empty(),
+                        },
+                        append = &adw::PreferencesGroup {
+                            #[local_ref]
+                            add = nameoptslistbox -> gtk::ListBox {
+                                set_margin_bottom: 15,
+                                add_css_class: "boxed-list",
+                                append = &adw::ActionRow {
+                                    #[watch]
+                                    set_title: &model.customopt.join("."),
+                                    #[watch]
+                                    set_sensitive: !model.customopt.contains(&String::from("&lt;name&gt;")),
+                                    set_selectable: false,
+                                    set_activatable: true,
+                                    add_suffix = &gtk::Image {
+                                        set_icon_name: Some("list-add-symbolic"),
+                                        add_css_class: "accent",
+                                    },
+                                    connect_activated[sender] => move |_| {
+                                        sender.input(SearchEntryMsg::Save(None));
+                                    }
+                                }
+                            }
+                        },
+                    }
+                }
+            }
         }
     }
 
-    fn update(
-        &mut self,
-        msg: SearchEntryMsg,
-        _components: &(),
-        _sender: Sender<SearchEntryMsg>,
-        parent_sender: Sender<AppMsg>,
-    ) {
+    fn init(
+        parent_window: Self::InitParams,
+        root: &Self::Root,
+        sender: &ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let model = SearchEntryModel {
+            hidden: true,
+            position: Vec::default(),
+            data: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            nameopts: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            customopt: Vec::default(),
+        };
+        let datalistbox = model.data.widget();
+        let nameoptslistbox = model.nameopts.widget();
+
+        let widgets = view_output!();
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+        let mut data_guard = self.data.guard();
+        let mut nameopts_guard = self.nameopts.guard();
         match msg {
             SearchEntryMsg::Show(pos, optdata) => {
-                self.data.clear();
-                self.nameopts.clear();
+                data_guard.clear();
+                nameopts_guard.clear();
                 for v in optdata {
-                    self.data.push(SearchEntryOption { value: v });
+                    data_guard.push_back(v);
                 }
                 for i in 0..pos.len() {
                     if pos[i] == "<name>" {
                         let mut op = pos.to_vec();
                         op[i] = "<b>&lt;name&gt;</b>".to_string();
-                        self.nameopts.push(SearchNameEntryOption {
-                            value: op.join(".").replace("<name>", "&lt;name&gt;"),
-                            index: i,
-                        });
+                        nameopts_guard
+                            .push_back((op.join(".").replace("<name>", "&lt;name&gt;"), i));
                     }
                 }
                 self.position = pos.clone();
@@ -72,7 +142,7 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
             }
             SearchEntryMsg::Close => {
                 self.hidden = true;
-                self.data.clear();
+                data_guard.clear();
             }
             SearchEntryMsg::Save(dest) => {
                 self.hidden = true;
@@ -81,8 +151,8 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
                     for i in 0..self.position.len() {
                         if self.position[i] == "<name>" {
                             let mut existing = vec![];
-                            for d in self.data.iter() {
-                                let dvec = d.value.split('.').collect::<Vec<_>>();
+                            for i in 0..data_guard.len() {
+                                let dvec = &data_guard.get(i).unwrap().value;
                                 if !existing.contains(&dvec[i].to_string())
                                     && dvec[..i] == self.customopt[..i]
                                 {
@@ -90,18 +160,15 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
                                 }
                             }
                             if !existing.contains(&self.customopt[i]) {
-                                send!(
-                                    parent_sender,
-                                    AppMsg::AddNameAttr(
-                                        Some(self.customopt[..i].join(".")),
-                                        self.customopt[i].clone()
-                                    )
-                                );
+                                sender.output(AppMsg::AddNameAttr(
+                                    Some(self.customopt[..i].join(".")),
+                                    self.customopt[i].clone(),
+                                ));
                             }
                         } else if self.position[i] == "*" {
                             let mut existing = vec![];
-                            for d in self.data.iter() {
-                                let dvec = d.value.split('.').collect::<Vec<_>>();
+                            for i in 0..data_guard.len() {
+                                let dvec = &data_guard.get(i).unwrap().value;
                                 if dvec[..i] == self.customopt[..i] {
                                     if let Some(v) = dvec.get(i) {
                                         if let Ok(x) = v.parse::<usize>() {
@@ -119,25 +186,22 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
                                 0
                             };
                             n.insert(i, num);
-                            send!(parent_sender, AppMsg::AddStar(self.customopt[..i].join(".")));
+                            sender.output(AppMsg::AddStar(self.customopt[..i].join(".")));
                         }
                     }
                     for (k, v) in n {
                         self.customopt[k] = v.to_string();
                     }
                 }
-                self.data.clear();
-                send!(
-                    parent_sender,
-                    AppMsg::OpenSearchOption(
-                        if let Some(x) = dest {
-                            x
-                        } else {
-                            self.customopt.to_vec()
-                        },
-                        self.position.to_vec()
-                    )
-                );
+                data_guard.clear();
+                sender.output(AppMsg::OpenSearchOption(
+                    if let Some(x) = dest {
+                        x
+                    } else {
+                        self.customopt.to_vec()
+                    },
+                    self.position.to_vec(),
+                ));
             }
             SearchEntryMsg::SetName(v, i) => {
                 if self.position.get(i).is_some() {
@@ -152,102 +216,55 @@ impl ComponentUpdate<AppModel> for SearchEntryModel {
     }
 }
 
-#[relm4::widget(pub)]
-impl Widgets<SearchEntryModel, AppModel> for SearchEntryWidgets {
-    view! {
-        window = gtk::Dialog {
-            set_default_height: -1,
-            set_titlebar = Some(&adw::HeaderBar) {
-                add_css_class: "flat"
-            },
-            set_default_width: 500,
-            set_resizable: false,
-            set_transient_for: parent!(Some(&parent_widgets.main_window)),
-            set_modal: true,
-            set_visible: watch!(!model.hidden),
-            connect_close_request(sender) => move |_| {
-                send!(sender, SearchEntryMsg::Close);
-                gtk::Inhibit(true)
-            },
-            connect_visible_notify => move |x| {
-                if x.get_visible() {
-                    x.grab_focus();
-                }
-            },
-            set_child: main_box = Some(&gtk::Box) {
-                set_orientation: gtk::Orientation::Vertical,
-                append = &adw::Clamp {
-                    set_child = Some(&gtk::Box) {
-                        set_margin_start: 15,
-                        set_margin_end: 15,
-                        set_spacing: 15,
-                        set_orientation: gtk::Orientation::Vertical,
-                        append = &adw::PreferencesGroup {
-                            add = &gtk::ListBox {
-                                add_css_class: "boxed-list",
-                                factory!(model.data)
-                            },
-                            set_visible: watch!(!model.data.is_empty()),
-                        },
-                        append = &adw::PreferencesGroup {
-                            add = &gtk::ListBox {
-                                set_margin_bottom: 15,
-                                add_css_class: "boxed-list",
-                                factory!(model.nameopts),
-                                append = &adw::ActionRow {
-                                    set_title: watch!(&model.customopt.join(".")),
-                                    set_sensitive: watch!(!model.customopt.contains(&String::from("&lt;name&gt;"))),
-                                    set_selectable: false,
-                                    set_activatable: true,
-                                    add_suffix = &gtk::Image {
-                                        set_icon_name: Some("list-add-symbolic"),
-                                        add_css_class: "accent",
-                                    },
-                                    connect_activated(sender) => move |_| {
-                                        send!(sender, SearchEntryMsg::Save(None));
-                                    }
-                                }
-                            }
-                        },
-                    }
-                }
-            }
-        }
-    }
-}
-
 #[derive(Debug, PartialEq)]
 struct SearchEntryOption {
-    value: String,
+    value: Vec<String>,
 }
 
-#[relm4::factory_prototype]
-impl FactoryPrototype for SearchEntryOption {
-    type Factory = FactoryVec<Self>;
-    type Widgets = SearchWidgets;
-    type View = gtk::ListBox;
-    type Msg = SearchEntryMsg;
+#[derive(Debug)]
+enum SearchEntryOptionOutput {
+    Save(Vec<String>),
+}
+
+#[relm4::factory]
+impl FactoryComponent<gtk::ListBox, SearchEntryMsg> for SearchEntryOption {
+    type Command = ();
+    type CommandOutput = ();
+    type InitParams = String;
+    type Input = ();
+    type Output = SearchEntryOptionOutput;
+    type Widgets = CounterWidgets;
 
     view! {
         adw::ActionRow {
-            set_title: watch!(&self.value),
+            #[watch]
+            set_title: &self.value.join("."),
             set_selectable: false,
             set_activatable: true,
-            connect_activated(sender) => move |_| {
-                send!(sender, SearchEntryMsg::Save(Some(v.to_vec())));
+            connect_activated[output, value = self.value.clone()] => move |_| {
+                output.send(SearchEntryOptionOutput::Save(value.to_vec()));
             }
         }
     }
 
-    fn pre_init() {
-        let v = self
-            .value
+    fn init_model(
+        value: Self::InitParams,
+        _index: &DynamicIndex,
+        _input: &Sender<Self::Input>,
+        _output: &Sender<Self::Output>,
+    ) -> Self {
+        let v = value
             .split('.')
             .map(|x| x.to_string())
             .collect::<Vec<String>>();
+        Self { value: v }
     }
 
-    fn position(&self, _index: &usize) {}
+    fn output_to_parent_msg(output: Self::Output) -> Option<SearchEntryMsg> {
+        Some(match output {
+            SearchEntryOptionOutput::Save(v) => SearchEntryMsg::Save(Some(v)),
+        })
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -256,22 +273,30 @@ struct SearchNameEntryOption {
     index: usize,
 }
 
-#[relm4::factory_prototype]
-impl FactoryPrototype for SearchNameEntryOption {
-    type Factory = FactoryVec<Self>;
+#[derive(Debug)]
+enum SearchNameEntryOptionOutput {
+    SetName(String, usize),
+}
+
+#[relm4::factory]
+impl FactoryComponent<gtk::ListBox, SearchEntryMsg> for SearchNameEntryOption {
+    type Command = ();
+    type CommandOutput = ();
+    type InitParams = (String, usize);
+    type Input = ();
+    type Output = SearchNameEntryOptionOutput;
     type Widgets = SearchNameWidgets;
-    type View = gtk::ListBox;
-    type Msg = SearchEntryMsg;
 
     view! {
         adw::ActionRow {
-            set_title: watch!(&self.value),
+            #[watch]
+            set_title: &self.value,
             add_suffix = &gtk::Entry {
                 set_valign: gtk::Align::Center,
                 set_placeholder_text: Some("<name>"),
                 set_buffer = &gtk::EntryBuffer {
-                    connect_text_notify(sender) => move |x| {
-                        send!(sender, SearchEntryMsg::SetName(x.text(), i));
+                    connect_text_notify[output, index = self.index] => move |x| {
+                        output.send(SearchNameEntryOptionOutput::SetName(x.text(), index));
                     }
                 }
             },
@@ -280,9 +305,21 @@ impl FactoryPrototype for SearchNameEntryOption {
         }
     }
 
-    fn pre_init() {
-        let i = self.index;
+    fn init_model(
+        value: Self::InitParams,
+        _index: &DynamicIndex,
+        _input: &Sender<Self::Input>,
+        _output: &Sender<Self::Output>,
+    ) -> Self {
+        Self {
+            value: value.0,
+            index: value.1,
+        }
     }
 
-    fn position(&self, _index: &usize) {}
+    fn output_to_parent_msg(output: Self::Output) -> Option<SearchEntryMsg> {
+        Some(match output {
+            SearchNameEntryOptionOutput::SetName(x, i) => SearchEntryMsg::SetName(x, i),
+        })
+    }
 }

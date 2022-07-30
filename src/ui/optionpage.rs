@@ -1,15 +1,24 @@
+use std::convert::identity;
+
+use super::savechecking::*;
+use super::window::*;
 use crate::parse::options::OptionData;
 use adw::prelude::*;
+use html2pango;
+use log::*;
+use pandoc;
 use relm4::*;
 use sourceview5::prelude::*;
-use pandoc;
-use html2pango;
-use super::window::*;
-use super::savechecking::*;
-use log::*;
 
+#[derive(Debug)]
 pub enum OptPageMsg {
-    UpdateOption(Box<OptionData>, Vec<String>, Vec<String>, String, Vec<String>),
+    UpdateOption(
+        Box<OptionData>,
+        Vec<String>,
+        Vec<String>,
+        String,
+        Vec<String>,
+    ),
     UpdateConf(String),
     UpdateConfMod(String),
     ResetConf,
@@ -31,126 +40,21 @@ pub struct OptPageModel {
     saving: bool,
     resettracker: u8,
     valuetracker: u8,
+    #[tracker::no_eq]
+    async_handler: WorkerController<SaveAsyncHandler>,
 }
 
-impl Model for OptPageModel {
-    type Msg = OptPageMsg;
+#[relm4::component(pub)]
+impl SimpleComponent for OptPageModel {
+    type InitParams = ();
+    type Input = OptPageMsg;
+    type Output = AppMsg;
     type Widgets = OptPageWidgets;
-    type Components = OptPageComponents;
-}
 
-#[derive(relm4::Components)]
-pub struct OptPageComponents {
-    async_handler: RelmMsgHandler<SaveAsyncHandler, OptPageModel>,
-}
-
-#[relm4::async_trait]
-impl ComponentUpdate<AppModel> for OptPageModel {
-    fn init_model(parent_model: &AppModel) -> Self {
-        OptPageModel {
-            opt: parent_model.position.clone(),
-            refopt: parent_model.refposition.clone(),
-            data: OptionData::default(),
-            conf: String::new(),
-            modifiedconf: String::new(),
-            saving: false,
-            alloptions: parent_model.data.keys().map(|x| x.to_string()).collect::<Vec<String>>(),
-            scheme: None,
-            resettracker: 0,
-            valuetracker: 0,
-            tracker: 0,
-        }
-    }
-
-    fn update(
-        &mut self,
-        msg: OptPageMsg,
-        components: &OptPageComponents,
-        sender: Sender<OptPageMsg>,
-        parent_sender: Sender<AppMsg>,
-    ) {
-        self.reset();
-        match msg {
-            OptPageMsg::UpdateOption(data, opt, refopt, conf, alloptions) => {
-                self.update_conf(|x| x.clear());
-                self.update_modifiedconf(|x| x.clear());
-                self.set_data(*data);
-                self.update_opt(|o| *o = opt.to_vec());
-                self.set_refopt(refopt);
-                self.set_conf(conf.clone());
-                self.set_modifiedconf(conf);
-                self.set_alloptions(alloptions);
-            }
-            OptPageMsg::UpdateConf(conf) => {
-                if conf != self.modifiedconf {
-                    self.set_modifiedconf(conf);
-                }
-            }
-            OptPageMsg::UpdateConfMod(conf) => {
-                if conf != self.modifiedconf {
-                    self.set_modifiedconf(conf);
-                    self.update_valuetracker(|_| ()); // Simulate change to conf
-                }
-            }
-            OptPageMsg::ResetConf => {
-                let conf = self.conf.clone();
-                self.set_modifiedconf(conf);
-                self.update_valuetracker(|_| ()); // Simulate change to conf
-                self.update_resettracker(|_| ()); // Simulate reset
-            }
-            OptPageMsg::ClearConf => {
-                self.set_modifiedconf(String::default());
-                self.update_valuetracker(|_| ()); // Simulate change to conf
-            }
-            OptPageMsg::SaveConf => {
-                let opt = self.opt.join(".");
-                let refopt = self.refopt.join(".");
-                let mut conf = self.modifiedconf.clone();
-                while conf.ends_with('\n') || conf.ends_with(' ') {
-                    conf.pop();
-                }
-                self.set_modifiedconf(conf.clone());
-                if conf.is_empty() {
-                    send!(sender, OptPageMsg::DoneSaving(true, "true\n".to_string()));
-                } else {
-                    self.set_saving(true);
-                    parent_sender.send(AppMsg::SetBusy(true)).unwrap();
-                    components.async_handler.sender().blocking_send(SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf, self.alloptions.to_vec())).expect("Could not send message to async handler");
-                }
-            }
-            OptPageMsg::DoneSaving(save, message) => {
-                if save {
-                    if message.eq("true\n") {
-                        //Save
-                        self.set_conf(self.modifiedconf.clone());
-                        parent_sender.send(AppMsg::EditOpt(self.opt.join("."), self.modifiedconf.clone())).unwrap();
-                        self.update_resettracker(|_| ()); // Simulate reset
-                    } else {
-                        //Type mismatch
-                        let e = format!("{} is not of type {}", self.modifiedconf, self.data.op_type);
-                        parent_sender.send(AppMsg::SaveError(e)).unwrap();
-                    }
-                } else {
-                    //Error
-                    parent_sender.send(AppMsg::SaveError(message)).unwrap();
-                }
-                
-                self.set_saving(false);
-                parent_sender.send(AppMsg::SetBusy(false)).unwrap();
-            }
-            OptPageMsg::SetScheme(scheme) => {
-                self.set_scheme(sourceview5::StyleSchemeManager::default().scheme(&scheme));
-            }
-        }
-    }
-}
-
-#[relm4::widget(pub)]
-impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
     view! {
         optwindow = gtk::ScrolledWindow {
-            set_child = Some(&adw::Clamp) {
-                set_child = Some(&gtk::Box) {
+            adw::Clamp {
+                gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     set_margin_all: 15,
                     set_spacing: 15,
@@ -161,28 +65,30 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                         set_margin_bottom: 5,
                         set_halign: gtk::Align::Start,
                         add_css_class: "title-1",
-                        set_label: watch!(&model.opt.join("."))
+                        #[watch]
+                        set_label: &model.opt.join(".")
                     },
 
-                    append = &gtk::Box {
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append: desc_header_box = &gtk::Box {
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             add_css_class: "header",
                             add_css_class: "single-line",
-                            append: desc_header = &gtk::Label {
+                            gtk::Label {
                                 set_halign: gtk::Align::Start,
                                 add_css_class: "heading",
                                 set_label: "Description",
                             }
                         },
-                        append = &gtk::Label {
+                        #[name(desc)]
+                        gtk::Label {
                             set_halign: gtk::Align::Start,
                             set_wrap: true,
                             add_css_class: "body",
-                            set_use_markup: true,
-                            set_label: watch!({
+                            #[track(model.changed(OptPageModel::data()))]
+                            set_markup: {
                                 let x = format!("<article xmlns=\"http://docbook.org/ns/docbook\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"5.0\" xml:lang=\"en\"><para>\n{}\n</para></article>", model.data.description.trim());
                                 let mut pandoc = pandoc::new();
                                 pandoc.set_input(pandoc::InputKind::Pipe(x));
@@ -199,58 +105,67 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                                     pango.pop();
                                 }
                                 pango.strip_prefix('\n').unwrap_or(&pango).to_string().as_str()
-                            }),
+                            },
                         },
                     },
 
 
-                    append = &gtk::Box {
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append: type_header_box = &gtk::Box {
+                        #[name(type_header_box)]
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             add_css_class: "header",
                             add_css_class: "single-line",
-                            append: type_header = &gtk::Label {
+                            #[name(type_header)]
+                            gtk::Label {
                                 set_halign: gtk::Align::Start,
                                 add_css_class: "heading",
                                 set_label: "Type",
                             }
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             set_halign: gtk::Align::Start,
                             set_wrap: true,
                             add_css_class: "body",
-                            set_label: watch!(&model.data.op_type),
+                            #[watch]
+                            set_label: &model.data.op_type,
                         },
                     },
 
-                    append = &gtk::Box {
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        set_visible: watch!(model.data.default.is_some()),
-                        append: default_box = &gtk::Box {
+                        #[watch]
+                        set_visible: model.data.default.is_some(),
+                        #[name(default_box)]
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             add_css_class: "header",
                             add_css_class: "single-line",
-                            append: default_header = &gtk::Label {
+                            #[name(default_header)]
+                            gtk::Label {
                                 set_halign: gtk::Align::Start,
                                 add_css_class: "heading",
                                 set_label: "Default",
                             }
                         },
-                        append = &gtk::Frame {
+                        gtk::Frame {
                             add_css_class: "code",
-                            set_child = Some(&sourceview5::View) {
+                            sourceview5::View {
                                 set_editable: false,
                                 set_monospace: true,
                                 set_cursor_visible: false,
                                 set_top_margin: 5,
                                 set_bottom_margin: 5,
                                 set_left_margin: 5,
-                                set_buffer: defaultbuf = Some(&sourceview5::Buffer) {
-                                    set_style_scheme: track!(model.changed(OptPageModel::scheme()), model.scheme.as_ref()),
-                                    set_text: watch!({
+                                #[wrap(Some)]
+                                set_buffer: defaultbuf = &sourceview5::Buffer {
+                                    #[track(model.changed(OptPageModel::scheme()))]
+                                    set_style_scheme: model.scheme.as_ref(),
+                                    #[watch]
+                                    set_text: {
                                         let x = model.data.default.as_ref().unwrap_or(&serde_json::Value::Null);
                                         &match x {
                                             serde_json::Value::Object(o) => match o.get("text") {
@@ -265,7 +180,7 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                                             },
                                             _ => serde_json::to_string_pretty(x).unwrap_or_default(),
                                         }
-                                    }),
+                                    },
                                 }
                             },
                         },
@@ -274,7 +189,8 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                     append = &gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        set_visible: watch!(model.data.example.is_some()),
+                        #[watch]
+                        set_visible: model.data.example.is_some(),
                         append: example_box = &gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             add_css_class: "header",
@@ -288,16 +204,20 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                         },
                         append = &gtk::Frame {
                             add_css_class: "code",
-                            set_child = Some(&sourceview5::View) {
+                            #[wrap(Some)]
+                            set_child = &sourceview5::View {
                                 set_editable: false,
                                 set_monospace: true,
                                 set_cursor_visible: false,
                                 set_top_margin: 5,
                                 set_bottom_margin: 5,
                                 set_left_margin: 5,
-                                set_buffer: exbuf = Some(&sourceview5::Buffer) {
-                                    set_style_scheme: track!(model.changed(OptPageModel::scheme()), model.scheme.as_ref()),
-                                    set_text: watch!({
+                                #[wrap(Some)]
+                                set_buffer: exbuf = &sourceview5::Buffer {
+                                    #[track(model.changed(OptPageModel::scheme()))]
+                                    set_style_scheme: model.scheme.as_ref(),
+                                    #[watch]
+                                    set_text: {
                                         let x = model.data.example.as_ref().unwrap_or(&serde_json::Value::Null);
                                         &match x {
                                             serde_json::Value::Object(o) => match o.get("text") {
@@ -312,7 +232,7 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                                             },
                                             _ => serde_json::to_string_pretty(x).unwrap_or_default(),
                                         }
-                                    }),
+                                    },
                                 }
                             },
                         },
@@ -322,7 +242,8 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                         set_margin_top: 5,
                     },
                     append = &gtk::Box {
-                        set_visible: watch!(valuestack.is_child_visible()),
+                        #[watch]
+                        set_visible: valuestack.is_child_visible(),
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
                         append: simplevalue_box = &gtk::Box {
@@ -341,17 +262,17 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                                 set_adjustment: &gtk::Adjustment::new(0.0, f64::MIN, f64::MAX, 1.0, 5.0, 0.0),
                                 set_climb_rate: 1.0,
                                 set_digits: 0,
-                                connect_value_changed(sender) => move |x| {
+                                connect_value_changed[sender] => move |x| {
                                     if x.is_sensitive() {
-                                        send!(sender, OptPageMsg::UpdateConfMod(x.value().to_string()))
+                                        sender.input(OptPageMsg::UpdateConfMod(x.value().to_string()))
                                     }
                                 },
                             },
                             add_child: stringentry = &gtk::Entry {
                                 set_halign: gtk::Align::Start,
-                                connect_changed(sender) => move |x| {
+                                connect_changed[sender] => move |x| {
                                     if x.is_sensitive() {
-                                        send!(sender, OptPageMsg::UpdateConfMod(format!("\"{}\"", x.text())));
+                                        sender.input(OptPageMsg::UpdateConfMod(format!("\"{}\"", x.text())));
                                     }
                                 },
                             },
@@ -360,18 +281,18 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                                 set_orientation: gtk::Orientation::Horizontal,
                                 append: truebtn = &gtk::ToggleButton {
                                     set_label: "True",
-                                    connect_toggled(sender) => move |x| {
+                                    connect_toggled[sender] => move |x| {
                                         if x.is_active() {
-                                            send!(sender, OptPageMsg::UpdateConfMod(String::from("true")))
+                                            sender.input(OptPageMsg::UpdateConfMod(String::from("true")))
                                         }
                                     }
                                 },
                                 append: falsebtn = &gtk::ToggleButton {
                                     set_label: "False",
                                     set_group: Some(&truebtn),
-                                    connect_toggled(sender) => move |x| {
+                                    connect_toggled[sender] => move |x| {
                                         if x.is_active() {
-                                            send!(sender, OptPageMsg::UpdateConfMod(String::from("false")))
+                                            sender.input(OptPageMsg::UpdateConfMod(String::from("false")))
                                         }
                                     }
                                 },
@@ -398,7 +319,8 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                         },
                         append = &gtk::Frame {
                             add_css_class: "code",
-                            set_child = Some(&sourceview5::View) {
+                            #[wrap(Some)]
+                            set_child = &sourceview5::View {
                                 set_background_pattern: sourceview5::BackgroundPatternType::Grid,
                                 set_height_request: 100,
                                 set_editable: true,
@@ -406,24 +328,30 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                                 set_top_margin: 5,
                                 set_bottom_margin: 5,
                                 set_left_margin: 5,
-                                set_buffer: valuebuf = Some(&sourceview5::Buffer) {
-                                    set_style_scheme: track!(model.changed(OptPageModel::scheme()), model.scheme.as_ref()),
-                                    set_text: track!(model.changed(OptPageModel::opt()), {
+                                #[wrap(Some)]
+                                set_buffer: valuebuf = &sourceview5::Buffer {
+                                    #[track(model.changed(OptPageModel::scheme()))]
+                                    set_style_scheme: model.scheme.as_ref(),
+                                    #[track(model.changed(OptPageModel::opt()))]
+                                    set_text: {
                                         debug!("opt changing valuebuf to {:?}", model.conf);
                                         &model.conf
-                                    }),
-                                    set_text: track!(model.changed(OptPageModel::conf()), {
+                                    },
+                                    #[track(model.changed(OptPageModel::conf()))]
+                                    set_text: {
                                         debug!("conf changing valuebuf to {:?}", model.conf);
                                         &model.conf
-                                    }),
-                                    set_text: track!(model.changed(OptPageModel::valuetracker()), {
-                                        debug!("valuetracker changing valuebuf to {:?}", model.modifiedconf);    
+                                    },
+                                    #[track(model.changed(OptPageModel::valuetracker()))]
+                                    set_text: {
+                                        debug!("valuetracker changing valuebuf to {:?}", model.modifiedconf);
                                         &model.modifiedconf
-                                    }),
-                                    connect_changed(sender) => move |x| {
+                                    },
+                                    connect_changed[sender] => move |x| {
                                         let (start, end) = x.bounds();
+                                        debug!("valuebuf changed to {:?}", x.text(&start, &end, true));
                                         let text = x.text(&start, &end, true).to_string();
-                                        send!(sender, OptPageMsg::UpdateConf(text))
+                                        sender.input(OptPageMsg::UpdateConf(text))
                                     }
                                 }
                             },
@@ -433,16 +361,18 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                             set_spacing: 10,
                             append = &gtk::Button {
                                 set_label: "Reset",
-                                set_sensitive: watch!(model.conf != model.modifiedconf),
-                                connect_clicked(sender) => move |_| {
-                                    send!(sender, OptPageMsg::ResetConf)
+                                #[watch]
+                                set_sensitive: model.conf != model.modifiedconf,
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(OptPageMsg::ResetConf)
                                 }
                             },
                             append = &gtk::Button {
                                 set_label: "Clear",
-                                set_sensitive: watch!(!model.modifiedconf.is_empty()),
-                                connect_clicked(sender) => move |_| {
-                                    send!(sender, OptPageMsg::ClearConf)
+                                #[watch]
+                                set_sensitive: !model.modifiedconf.is_empty(),
+                                connect_clicked[sender] => move |_| {
+                                    sender.input(OptPageMsg::ClearConf)
                                 }
                             },
                             append: savestack = &gtk::Stack {
@@ -451,13 +381,15 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                                 add_child: savebtn = &gtk::Button {
                                     set_label: "Save",
                                     add_css_class: "suggested-action",
-                                    set_sensitive: watch!(model.conf != model.modifiedconf),
-                                    connect_clicked(sender) => move |_| {
-                                        send!(sender, OptPageMsg::SaveConf)
+                                    #[watch]
+                                    set_sensitive: model.conf != model.modifiedconf,
+                                    connect_clicked[sender] => move |_| {
+                                        sender.input(OptPageMsg::SaveConf)
                                     },
                                 },
                                 add_child: spinner = &gtk::Spinner {
-                                    set_spinning: watch!(model.saving),
+                                    #[watch]
+                                    set_spinning: model.saving,
                                 },
                             },
                         }
@@ -468,10 +400,12 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
     }
 
     fn pre_view() {
+        info!("pre_view");
         let set_val = || {
+            debug!("SET VAL");
             if let Some(x) = valuestack.visible_child() {
                 let val = model.conf.as_str();
-                if x == self.truefalse {
+                if x.eq(truefalse) {
                     if val == "true" {
                         truebtn.set_active(true);
                         falsebtn.set_active(false);
@@ -482,30 +416,30 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
                         truebtn.set_active(false);
                         falsebtn.set_active(false);
                     }
-                } else if x == self.number {
-                    self.number.set_sensitive(false);
+                } else if x.eq(number) {
+                    number.set_sensitive(false);
                     if let Ok(x) = val.parse::<f64>() {
-                        self.number.set_value(x);
+                        number.set_value(x);
                     } else {
-                        self.number.set_value(0.0);
+                        number.set_value(0.0);
                     }
-                    self.number.set_sensitive(true);
-                } else if x == self.stringentry {
+                    number.set_sensitive(true);
+                } else if x.eq(stringentry) {
                     if let Some(x) = val.chars().next() {
                         if let Some(y) = val.chars().last() {
                             if x == '"' && y == '"' {
                                 if let Some(v) = val.get(1..val.len() - 1) {
-                                    self.stringentry.set_sensitive(false);
-                                    self.stringentry.set_text(v);
-                                    self.stringentry.set_sensitive(true);
-                                    return
+                                    stringentry.set_sensitive(false);
+                                    stringentry.set_text(v);
+                                    stringentry.set_sensitive(true);
+                                    return;
                                 }
                             }
                         }
                     }
-                    self.stringentry.set_sensitive(false);
-                    self.stringentry.set_text("");
-                    self.stringentry.set_sensitive(true);
+                    stringentry.set_sensitive(false);
+                    stringentry.set_text("");
+                    stringentry.set_sensitive(true);
                 } else {
                     warn!("Unhandled valuestack child {:?}", x);
                 }
@@ -518,22 +452,146 @@ impl Widgets<OptPageModel, AppModel> for OptPageWidgets {
             let optype = model.data.op_type.as_str();
             valuestack.set_child_visible(true);
             match optype {
-                "boolean" | "null or boolean" => valuestack.set_visible_child(&self.truefalse),
-                "signed integer" | "null or signed integer" => valuestack.set_visible_child(&self.number),
-                "string" | "null or string" | "string, not containing newlines or colons" => valuestack.set_visible_child(&self.stringentry),
+                "boolean" | "null or boolean" => valuestack.set_visible_child(truefalse),
+                "signed integer" | "null or signed integer" => valuestack.set_visible_child(number),
+                "string" | "null or string" | "string, not containing newlines or colons" => {
+                    valuestack.set_visible_child(stringentry)
+                }
                 _ => valuestack.set_child_visible(false),
             }
             if valuestack.is_child_visible() {
                 set_val();
             }
         }
-        if model.changed(OptPageModel::resettracker()) { // Reset button is pressed
-            set_val()
+        if model.changed(OptPageModel::resettracker()) {
+            // Reset button is pressed
+            set_val();
         }
         if model.saving {
-            savestack.set_visible_child(&self.spinner)
+            savestack.set_visible_child(spinner)
         } else {
-            savestack.set_visible_child(&self.savebtn)
+            savestack.set_visible_child(savebtn)
+        }
+    }
+
+    fn init(
+        _parent_window: Self::InitParams,
+        root: &Self::Root,
+        sender: &ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let async_handler = SaveAsyncHandler::builder()
+            .detach_worker(())
+            .forward(sender.input_sender(), identity);
+        let model = OptPageModel {
+            opt: vec![],    //parent_window.position.clone(),
+            refopt: vec![], //parent_window.refposition.clone(),
+            data: OptionData::default(),
+            conf: String::new(),
+            modifiedconf: String::new(),
+            saving: false,
+            alloptions: vec![], //parent_window.data.keys().map(|x| x.to_string()).collect::<Vec<String>>(),
+            scheme: None,
+            resettracker: 0,
+            valuetracker: 0,
+            async_handler,
+            tracker: 0,
+        };
+
+        let widgets = view_output!();
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+        self.reset();
+        match msg {
+            OptPageMsg::UpdateOption(data, opt, refopt, conf, alloptions) => {
+                info!("OptPageMsg::UpdateOption");
+                self.update_conf(|x| x.clear());
+                self.update_modifiedconf(|x| x.clear());
+                self.set_data(*data);
+                self.update_opt(|o| *o = opt.to_vec());
+                self.set_refopt(refopt);
+                self.set_conf(conf.clone());
+                self.set_modifiedconf(conf);
+                self.set_alloptions(alloptions);
+            }
+            OptPageMsg::UpdateConf(conf) => {
+                info!("OptPageMsg::UpdateConf");
+                if conf != self.modifiedconf {
+                    self.set_modifiedconf(conf);
+                }
+            }
+            OptPageMsg::UpdateConfMod(conf) => {
+                info!("OptPageMsg::UpdateConfMod");
+                if conf != self.modifiedconf {
+                    self.set_modifiedconf(conf);
+                    self.update_valuetracker(|_| ()); // Simulate change to conf
+                }
+            }
+            OptPageMsg::ResetConf => {
+                info!("OptPageMsg::ResetConf");
+                let conf = self.conf.clone();
+                self.set_modifiedconf(conf);
+                self.update_valuetracker(|_| ()); // Simulate change to conf
+                self.update_resettracker(|_| ()); // Simulate reset
+            }
+            OptPageMsg::ClearConf => {
+                info!("OptPageMsg::ClearConf");
+                self.set_modifiedconf(String::default());
+                self.update_valuetracker(|_| ()); // Simulate change to conf
+            }
+            OptPageMsg::SaveConf => {
+                info!("OptPageMsg::SaveConf");
+                let opt = self.opt.join(".");
+                let refopt = self.refopt.join(".");
+                let mut conf = self.modifiedconf.clone();
+                while conf.ends_with('\n') || conf.ends_with(' ') {
+                    conf.pop();
+                }
+                self.set_modifiedconf(conf.clone());
+                if conf.is_empty() {
+                    sender.input(OptPageMsg::DoneSaving(true, "true\n".to_string()));
+                } else {
+                    self.set_saving(true);
+                    sender.output(AppMsg::SetBusy(true));
+                    self.async_handler.emit(SaveAsyncHandlerMsg::SaveCheck(
+                        opt,
+                        refopt,
+                        conf,
+                        self.alloptions.to_vec(),
+                    ));
+                }
+            }
+            OptPageMsg::DoneSaving(save, message) => {
+                info!("OptPageMsg::DoneSaving");
+                if save {
+                    if message.eq("true\n") {
+                        //Save
+                        self.set_conf(self.modifiedconf.clone());
+                        sender.output(AppMsg::EditOpt(
+                            self.opt.join("."),
+                            self.modifiedconf.clone(),
+                        ));
+                        self.update_resettracker(|_| ()); // Simulate reset
+                    } else {
+                        //Type mismatch
+                        let e =
+                            format!("{} is not of type {}", self.modifiedconf, self.data.op_type);
+                        sender.output(AppMsg::SaveError(e));
+                    }
+                } else {
+                    //Error
+                    sender.output(AppMsg::SaveError(message));
+                }
+
+                self.set_saving(false);
+                sender.output(AppMsg::SetBusy(false));
+            }
+            OptPageMsg::SetScheme(scheme) => {
+                info!("OptPageMsg::SetScheme");
+                self.set_scheme(sourceview5::StyleSchemeManager::default().scheme(&scheme));
+            }
         }
     }
 }

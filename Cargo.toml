@@ -5,11 +5,8 @@ edition = "2021"
 default-run = "nixos-conf-editor"
 
 [dependencies]
-gtk = { package = "gtk4", version = "0.4" }
-adw = { package = "libadwaita", version = "0.1", features = ["gtk_v4_6"] }
-sourceview5 = { version = "0.4", features = ["gtk_v4_6"] }
-relm4 = { version = "0.4", features = ["macros", "libadwaita", "tokio-rt"] }
-relm4-components = "0.4"
+relm4 = { git = "https://github.com/Relm4/Relm4", tag = "v0.5.0-beta.1", features = ["all"]  }
+sourceview5 = { git = "https://gitlab.gnome.org/World/Rust/sourceview5-rs/", rev = "6082210f7d1fc32b100bd9c714e9521eecacb3f7", features = ["v5_4"] }
 tracker = "0.1"
 tokio = { version = "1.20", features = ["rt", "macros", "time", "rt-multi-thread", "sync"] }
 
