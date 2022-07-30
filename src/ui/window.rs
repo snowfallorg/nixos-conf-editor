@@ -1,18 +1,13 @@
-use super::about;
 use super::about::AboutModel;
-use super::nameentry;
 use super::nameentry::NameEntryModel;
-use super::optionpage;
 use super::optionpage::*;
 use super::preferencespage::PrefModel;
 use super::preferencespage::WelcomeModel;
 use super::preferencespage::WelcomeMsg;
-use super::quitdialog;
 use super::quitdialog::QuitInit;
 use super::rebuild::RebuildModel;
 use super::savechecking::SaveErrorModel;
 use super::savechecking::SaveErrorMsg;
-use super::searchentry;
 use super::searchentry::SearchEntryModel;
 use super::windowloading::LoadErrorModel;
 use super::windowloading::WindowAsyncHandler;
@@ -39,8 +34,8 @@ use crate::ui::searchentry::SearchEntryMsg;
 use crate::ui::windowloading::LoadErrorMsg;
 use adw::prelude::*;
 use log::*;
-use relm4::{actions::*, factory::*, *};
 use relm4::gtk::glib::object::Cast;
+use relm4::{actions::*, factory::*, *};
 use std::collections::HashMap;
 use std::convert::identity;
 
@@ -185,19 +180,21 @@ impl SimpleComponent for AppModel {
             set_content: main_box = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
 
-                append = &adw::HeaderBar {
+                adw::HeaderBar {
                     #[wrap(Some)]
                     set_title_widget: headerstack = &gtk::Stack {
                         set_transition_type: gtk::StackTransitionType::Crossfade,
-                        add_child: title = &gtk::Label {
+                        #[name(title)]
+                        gtk::Label {
                             set_label: "NixOS Configuration Editor",
                         },
-                        
-                        add_child: buttons = &gtk::Box {
+
+                        #[name(buttons)]
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             set_halign: gtk::Align::Center,
                             add_css_class: "linked",
-                            
+
                             #[local_ref]
                             buttonsbox -> gtk::Box {
                                 #[local]
@@ -211,7 +208,9 @@ impl SimpleComponent for AppModel {
                                 add_css_class: "linked",
                             }
                         },
-                        add_child: search = &gtk::SearchEntry {
+
+                        #[name(search)]
+                        gtk::SearchEntry {
                                 add_css_class: "inline",
                                 set_placeholder_text: Some("Search"),
                                 set_halign: gtk::Align::Center,
@@ -219,9 +218,9 @@ impl SimpleComponent for AppModel {
                                 //set_search_delay: 500, // Change once gtk4-rs 4.8 is out
                                 connect_search_changed[sender] => move |x| {
                                     if x.text().is_empty() {
-                                        send!(sender, AppMsg::HideSearchPage);
+                                        sender.input(AppMsg::HideSearchPage);
                                     } else {
-                                        send!(sender, AppMsg::ShowSearchPage(x.text().to_string()));
+                                        sender.input(AppMsg::ShowSearchPage(x.text().to_string()));
                                     }
                                 },
                         },
@@ -237,7 +236,7 @@ impl SimpleComponent for AppModel {
                         set_active: model.header == HeaderBar::Search,
                         set_icon_name: "edit-find-symbolic",
                         connect_toggled[sender] => move |x| {
-                            send!(sender, {
+                            sender.input({
                                 if x.is_active() {
                                     AppMsg::ShowSearch
                                 } else {
@@ -249,27 +248,29 @@ impl SimpleComponent for AppModel {
                     pack_start = &gtk::Button {
                         set_label: "Rebuild",
                         connect_clicked[sender] => move |_| {
-                            send!(sender, AppMsg::Rebuild);
+                            sender.input(AppMsg::Rebuild);
                         },
                     }
                 },
                 #[name(stack)]
                 gtk::Stack {
-                    // set_transition_type: gtk::StackTransitionType::Crossfade,
-                    add_child: loading = &gtk::Box {
+                    #[name(loading)]
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_halign: gtk::Align::Center,
                         set_valign: gtk::Align::Center,
                         set_spacing: 10,
-                        append = &gtk::Spinner {
+                        gtk::Spinner {
+                            #[watch]
                             set_spinning: true,
                             set_height_request: 80,
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             set_label: "Loading...",
                         },
                     },
-                    add_child: treeview = &adw::PreferencesPage {
+                    #[name(treeview)]
+                    adw::PreferencesPage {
                         add: attrgroup = &adw::PreferencesGroup {
                             set_title: "Attributes",
                             #[track(model.changed(AppModel::position()))]
@@ -285,7 +286,7 @@ impl SimpleComponent for AppModel {
                                     #[wrap(Some)]
                                     set_child = &gtk::Box {
                                         set_margin_all: 15,
-                                        append = &gtk::Image {
+                                        gtk::Image {
                                             set_halign: gtk::Align::Center,
                                             set_hexpand: true,
                                             set_icon_name: Some("list-add-symbolic"),
@@ -293,15 +294,14 @@ impl SimpleComponent for AppModel {
                                         }
                                     }
                                 },
-                                // factory!(model.attributes),
                                 connect_row_activated[sender] => move |_, y| {
                                     if let Ok(l) = y.clone().downcast::<adw::PreferencesRow>() {
                                         if l.title() != "<ADD>" {
                                             let text = l.title().to_string();
                                             let v = text.split('.').map(|x| x.to_string()).collect::<Vec<String>>();
-                                            send!(sender, AppMsg::MoveToRow(v));
+                                            sender.input(AppMsg::MoveToRow(v));
                                         } else {
-                                            send!(sender, AppMsg::AddAttr);
+                                            sender.input(AppMsg::AddAttr);
                                         }
                                     }
                                 },
@@ -325,7 +325,8 @@ impl SimpleComponent for AppModel {
                             },
                         }
                     },
-                    add_child: optpage = &gtk::Box {
+                    #[name(optpage)]
+                    gtk::Box {
                         append: model.optionpage.widget()
                     },
                     add_titled: (model.searchpage.widget(), Some("SearchPage"), "SearchPage")
@@ -460,7 +461,7 @@ impl SimpleComponent for AppModel {
             let group = RelmActionGroup::<MenuActionGroup>::new();
             let sender = sender.clone();
             let prefaction: RelmAction<PreferencesAction> = RelmAction::new_stateless(move |_| {
-                send!(sender, AppMsg::ShowPrefMenu);
+                sender.input(AppMsg::ShowPrefMenu);
             });
 
             let aboutsender = model.about.sender().clone();
@@ -478,7 +479,7 @@ impl SimpleComponent for AppModel {
             let sender = sender.clone();
             let group = RelmActionGroup::<WindowActionGroup>::new();
             let searchaction: RelmAction<SearchAction> = RelmAction::new_stateless(move |_| {
-                send!(sender, AppMsg::ToggleSearch);
+                sender.input(AppMsg::ToggleSearch);
             });
             group.add_action(searchaction);
             let actions = group.into_action_group();
@@ -489,12 +490,9 @@ impl SimpleComponent for AppModel {
         {
             let sender = sender.clone();
             adw::StyleManager::default()
-                .connect_dark_notify(move |x| send!(sender, AppMsg::SetDarkMode(x.is_dark())));
+                .connect_dark_notify(move |x| sender.input(AppMsg::SetDarkMode(x.is_dark())));
         }
-        send!(
-            sender,
-            AppMsg::SetDarkMode(adw::StyleManager::default().is_dark())
-        );
+        sender.input(AppMsg::SetDarkMode(adw::StyleManager::default().is_dark()));
         ComponentParts { model, widgets }
     }
 
@@ -560,10 +558,10 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::MoveToSelf => {
                 info!("Received AppMsg::MoveToSelf");
-                send!(
-                    sender,
-                    AppMsg::MoveTo(self.position.clone(), self.refposition.clone())
-                );
+                sender.input(AppMsg::MoveTo(
+                    self.position.clone(),
+                    self.refposition.clone(),
+                ));
             }
             AppMsg::MoveToRow(pos) => {
                 info!("Received AppMsg::MoveToRow");
@@ -577,10 +575,7 @@ impl SimpleComponent for AppModel {
                 match attrvec.iter().find(|x| x.value == pos) {
                     Some(x) => {
                         debug!("FOUND ATTR: {:?}", x);
-                        send!(
-                            sender,
-                            AppMsg::MoveTo(x.value.to_vec(), x.refvalue.to_vec())
-                        );
+                        sender.input(AppMsg::MoveTo(x.value.to_vec(), x.refvalue.to_vec()));
                     }
                     None => {
                         error!("Received AppMsg::MoveToRow, but no attribute found");
@@ -620,12 +615,11 @@ impl SimpleComponent for AppModel {
                             options_guard.push_back(OptPos {
                                 value: o,
                                 refvalue: r,
-                                configured: if pos.eq(&newref) { opconfigured(&self.conf, &pos, op.clone()) } else { opconfigured2(
-                                    &self.configpath,
-                                    &pos,
-                                    &newref,
-                                    op.clone(),
-                                ) },
+                                configured: if pos.eq(&newref) {
+                                    opconfigured(&self.conf, &pos, op.clone())
+                                } else {
+                                    opconfigured2(&self.configpath, &pos, &newref, op.clone())
+                                },
                                 modified: opconfigured(&self.editedopts, &pos, op),
                             });
                         }
@@ -719,12 +713,16 @@ impl SimpleComponent for AppModel {
                                 attributes.push(AttrPos {
                                     value: p,
                                     refvalue: r,
-                                    configured: if pos.eq(&newref) { opconfigured(&self.conf, &pos, attr.to_string()) } else { opconfigured2(
-                                        &self.configpath,
-                                        &pos,
-                                        &newref,
-                                        attr.to_string(),
-                                    ) },
+                                    configured: if pos.eq(&newref) {
+                                        opconfigured(&self.conf, &pos, attr.to_string())
+                                    } else {
+                                        opconfigured2(
+                                            &self.configpath,
+                                            &pos,
+                                            &newref,
+                                            attr.to_string(),
+                                        )
+                                    },
                                     modified: opconfigured(
                                         &self.editedopts,
                                         &newref,
@@ -860,10 +858,7 @@ impl SimpleComponent for AppModel {
 
                 match optvec.iter().find(|x| x.value == pos) {
                     Some(x) => {
-                        send!(
-                            sender,
-                            AppMsg::OpenOption(x.value.to_vec(), x.refvalue.to_vec())
-                        );
+                        sender.input(AppMsg::OpenOption(x.value.to_vec(), x.refvalue.to_vec()));
                     }
                     None => {
                         error!("Received AppMsg::OpenOptionRow, but no options found");
@@ -886,9 +881,9 @@ impl SimpleComponent for AppModel {
             AppMsg::ToggleSearch if !self.busy => {
                 info!("Received AppMsg::ToggleSearch");
                 if self.header == HeaderBar::Search {
-                    send!(sender, AppMsg::HideSearch);
+                    sender.input(AppMsg::HideSearch);
                 } else {
-                    send!(sender, AppMsg::ShowSearch);
+                    sender.input(AppMsg::ShowSearch);
                 }
             }
             AppMsg::ShowSearchPage(s) if !self.busy => {
@@ -1004,10 +999,10 @@ impl SimpleComponent for AppModel {
                 info!("Received AppMsg::ResetConfig");
                 self.update_editedopts(|x| x.clear());
                 if self.page == Page::Option {
-                    send!(
-                        sender,
-                        AppMsg::OpenOption(self.position.clone(), self.refposition.clone())
-                    );
+                    sender.input(AppMsg::OpenOption(
+                        self.position.clone(),
+                        self.refposition.clone(),
+                    ));
                 }
             }
             AppMsg::SaveConfig => {
@@ -1016,23 +1011,20 @@ impl SimpleComponent for AppModel {
                 let conf = match parseconfig(&self.configpath) {
                     Ok(x) => x,
                     Err(_) => {
-                        send!(
-                            sender,
-                            AppMsg::LoadError(
-                                String::from("Error loading configuration file"),
-                                format!(
-                                    "<tt>{}</tt> may be an invalid configuration file",
-                                    self.configpath
-                                )
-                            )
-                        );
+                        sender.input(AppMsg::LoadError(
+                            String::from("Error loading configuration file"),
+                            format!(
+                                "<tt>{}</tt> may be an invalid configuration file",
+                                self.configpath
+                            ),
+                        ));
                         return;
                     }
                 };
                 self.set_conf(conf);
-                send!(sender, AppMsg::SetBusy(true));
+                sender.input(AppMsg::SetBusy(true));
                 self.set_page(Page::Loading);
-                send!(sender, AppMsg::TryLoad);
+                sender.input(AppMsg::TryLoad);
             }
             AppMsg::ShowPrefMenu => {
                 info!("Received AppMsg::ShowPrefMenu");
@@ -1073,7 +1065,7 @@ impl SimpleComponent for AppModel {
                         self.update_starattrs(|x| {
                             x.insert(pos.to_string(), *x.get(&pos).unwrap_or(&0) + 1);
                         });
-                        send!(sender, AppMsg::MoveToSelf);
+                        sender.input(AppMsg::MoveToSelf);
                     }
                     AddAttrOptions::None => {
                         error!("Cannot add attribute without name or star");
@@ -1100,7 +1092,7 @@ impl SimpleComponent for AppModel {
                     }
                 });
                 debug!("ADD NEW <NAME> {:?}", self.nameattrs);
-                send!(sender, AppMsg::MoveToSelf);
+                sender.input(AppMsg::MoveToSelf);
             }
             AppMsg::AddStar(pos) => {
                 info!("Received AppMsg::AddStar");

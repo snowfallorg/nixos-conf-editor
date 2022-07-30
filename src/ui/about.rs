@@ -54,7 +54,7 @@ impl SimpleComponent for AboutModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, _sender: &ComponentSender<Self>) {
         match msg {
             AboutMsg::Show => {
                 self.hidden = false;

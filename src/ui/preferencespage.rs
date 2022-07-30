@@ -236,29 +236,29 @@ impl SimpleComponent for WelcomeModel {
             set_modal: true,
             #[watch]
             set_visible: !model.hidden,
-            #[wrap(Some)]
-            set_content = &gtk::Box {
+            gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                append = &gtk::Box {
+                gtk::Box {
                     set_valign: gtk::Align::Center,
                     set_vexpand: true,
                     set_orientation: gtk::Orientation::Vertical,
                     set_spacing: 20,
                     set_margin_all: 20,
-                    append = &gtk::Box {
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append = &gtk::Label {
+                        gtk::Label {
                             add_css_class: "title-1",
                             set_text: "Welcome the NixOS Configuration Editor",
                             set_justify: gtk::Justification::Center,
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             add_css_class: "dim-label",
                             set_text: "If your configuration file is not in the default location, you can change it here.",
                         },
                     },
-                    append: confentry = &gtk::Entry {
+                    #[name(confentry)]
+                    gtk::Entry {
                         set_width_chars: 20,
                         #[track(model.changed(WelcomeModel::confpath()))]
                         set_text: &model.confpath,
@@ -267,7 +267,8 @@ impl SimpleComponent for WelcomeModel {
                         set_hexpand: false,
                         set_halign: gtk::Align::Center,
                     },
-                    append: btn = &gtk::Button {
+                    #[name(btn)]
+                    gtk::Button {
                         add_css_class: "pill",
                         add_css_class: "suggested-action",
                         set_label: "Continue",

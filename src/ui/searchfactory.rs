@@ -24,14 +24,14 @@ impl FactoryComponent<gtk::ListBox, SearchPageMsg> for SearchOption {
                 set_orientation: gtk::Orientation::Horizontal,
                 set_spacing: 6,
                 set_margin_all: 15,
-                append = &gtk::Label {
+                gtk::Label {
                     set_text: &self.value.join("."),
                 },
-                append = &gtk::Separator {
+                gtk::Separator {
                     set_hexpand: true,
                     set_opacity: 0.0,
                 },
-                append = &gtk::Image {
+                gtk::Image {
                     set_icon_name: Some("object-select-symbolic"),
                     set_visible: self.configured,
                 },

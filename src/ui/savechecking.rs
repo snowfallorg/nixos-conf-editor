@@ -1,6 +1,5 @@
-use super::optionpage::*;
-use super::window::{AppModel, AppMsg};
-use crate::ui::optionpage::{OptPageMsg};
+use super::window::AppMsg;
+use crate::ui::optionpage::OptPageMsg;
 use adw::prelude::*;
 use log::{debug, info};
 use relm4::*;
@@ -153,8 +152,7 @@ impl SimpleComponent for SaveErrorModel {
                 set_margin_end: 20,
                 gtk::ScrolledWindow {
                     set_vscrollbar_policy: gtk::PolicyType::Never,
-                    #[wrap(Some)]
-                    set_child = &sourceview5::View {
+                    sourceview5::View {
                         set_vexpand: true,
                         set_editable: false,
                         set_cursor_visible: false,

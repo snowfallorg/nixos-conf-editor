@@ -63,12 +63,8 @@ impl Worker for WindowAsyncHandler {
                     }
                 };
                 sender.output(AppMsg::InitialLoad(LoadValues { data, tree, conf }))
-                // }).drop_on_shutdown();
-                // })
             }
             WindowAsyncHandlerMsg::GetConfigPath => {
-                // sender.command(|out, shutdown| {
-                // shutdown.register(async move {
                 if let Ok(false) = configexists() {
                     sender.output(AppMsg::Welcome);
                     return;

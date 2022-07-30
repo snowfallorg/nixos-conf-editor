@@ -1,4 +1,4 @@
-use super::window::{AppModel, AppMsg};
+use super::window::AppMsg;
 use adw::prelude::*;
 use relm4::*;
 use sourceview5::prelude::*;
@@ -63,68 +63,71 @@ impl SimpleComponent for RebuildModel {
             set_visible: !model.hidden,
             add_css_class: "dialog",
             add_css_class: "message",
-            #[wrap(Some)]
-            set_content = &gtk::Box {
+            gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                append: statusstack = &gtk::Stack {
+                #[name(statusstack)]
+                gtk::Stack {
                     set_margin_top: 20,
                     set_transition_type: gtk::StackTransitionType::Crossfade,
                     set_vhomogeneous: false,
-                    add_child: building = &gtk::Box {
+                    #[name(building)]
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append: spinner = &gtk::Spinner {
+                        gtk::Spinner {
                             set_spinning: true,
                             set_height_request: 60,
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             set_label: "Building...",
                             add_css_class: "title-1",
                         },
                     },
-                    add_child: success = &gtk::Box {
+                    #[name(success)]
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append = &gtk::Image {
+                        gtk::Image {
                             add_css_class: "success",
                             set_icon_name: Some("object-select-symbolic"),
                             set_pixel_size: 128,
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             set_label: "Done!",
                             add_css_class: "title-1",
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             set_label: "Rebuild successful!",
                             add_css_class: "dim-label",
                         }
                     },
-                    add_child: error = &gtk::Box {
+                    #[name(error)]
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append = &gtk::Image {
+                        gtk::Image {
                             add_css_class: "error",
                             set_icon_name: Some("dialog-error-symbolic"),
                             set_pixel_size: 128,
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             set_label: "Error!",
                             add_css_class: "title-1",
                         },
-                        append = &gtk::Label {
+                        gtk::Label {
                             set_label: "Rebuild failed! See below for error message.",
                             add_css_class: "dim-label",
                         }
                     }
                 },
-                append = &gtk::Frame {
+                gtk::Frame {
                     set_margin_all: 20,
-                    #[wrap(Some)]
-                    set_child: scrollwindow = &gtk::ScrolledWindow {
+                    #[name(scrollwindow)]
+                    gtk::ScrolledWindow {
                         set_max_content_height: 500,
                         set_min_content_height: 100,
-                        #[wrap(Some)]
-                        set_child: outview = &sourceview5::View {
+                        #[name(outview)]
+                        sourceview5::View {
                             set_editable: false,
                             set_cursor_visible: false,
                             set_monospace: true,
@@ -144,13 +147,13 @@ impl SimpleComponent for RebuildModel {
                         }
                     }
                 },
-                append = &gtk::Box {
+                gtk::Box {
                     add_css_class: "dialog-action-area",
                     set_orientation: gtk::Orientation::Horizontal,
                     set_homogeneous: true,
                     #[track(model.changed(RebuildModel::status()))]
                     set_visible: model.status != RebuildStatus::Building,
-                    append = &gtk::Button {
+                    gtk::Button {
                         set_label: "Close",
                         #[track(model.changed(RebuildModel::status()))]
                         set_visible: model.status == RebuildStatus::Success,
@@ -158,7 +161,7 @@ impl SimpleComponent for RebuildModel {
                             sender.input(RebuildMsg::Save)
                         }
                     },
-                    append = &gtk::Button {
+                    gtk::Button {
                         add_css_class: "destructive-action",
                         set_label: "Save Anyways",
                         #[track(model.changed(RebuildModel::status()))]
@@ -167,7 +170,7 @@ impl SimpleComponent for RebuildModel {
                             sender.input(RebuildMsg::Save)
                         }
                     },
-                    append = &gtk::Button {
+                    gtk::Button {
                         set_label: "Reset Changes",
                         #[track(model.changed(RebuildModel::status()))]
                         set_visible: model.status == RebuildStatus::Error,
@@ -175,7 +178,7 @@ impl SimpleComponent for RebuildModel {
                             sender.input(RebuildMsg::Reset)
                         }
                     },
-                    append = &gtk::Button {
+                    gtk::Button {
                         set_label: "Keep Editing",
                         #[track(model.changed(RebuildModel::status()))]
                         set_visible: model.status == RebuildStatus::Error,

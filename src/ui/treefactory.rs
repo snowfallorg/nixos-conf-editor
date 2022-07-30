@@ -27,7 +27,7 @@ impl FactoryComponent<gtk::ListBox, AppMsg> for AttrPos {
                 set_orientation: gtk::Orientation::Horizontal,
                 set_spacing: 6,
                 set_margin_all: 15,
-                append = &gtk::Label {
+                gtk::Label {
                     set_text: &{
                         if self.replacefor == Some(String::from("*")) {
                                     format!("[<i>{}</i>]", self.value.last().unwrap_or(&String::new()))
@@ -37,11 +37,11 @@ impl FactoryComponent<gtk::ListBox, AppMsg> for AttrPos {
                     },
                     set_use_markup: true,
                 },
-                append = &gtk::Separator {
+                gtk::Separator {
                     set_hexpand: true,
                     set_opacity: 0.0,
                 },
-                append = &gtk::Image {
+                gtk::Image {
                     set_icon_name: if self.modified { Some("system-run-symbolic") } else { Some("object-select-symbolic") },
                     set_visible: self.configured || self.modified,
                 },
@@ -90,16 +90,16 @@ impl FactoryComponent<gtk::ListBox, AppMsg> for OptPos {
                 set_orientation: gtk::Orientation::Horizontal,
                 set_spacing: 6,
                 set_margin_all: 15,
-                append = &gtk::Label {
+                gtk::Label {
                     set_text: &{
                         self.value.last().unwrap_or(&String::new()).to_string()
                     },
                 },
-                append = &gtk::Separator {
+                gtk::Separator {
                     set_hexpand: true,
                     set_opacity: 0.0,
                 },
-                append = &gtk::Image {
+                gtk::Image {
                     set_icon_name: if self.modified { Some("system-run-symbolic") } else { Some("object-select-symbolic") },
                     set_visible: self.configured || self.modified,
                 },

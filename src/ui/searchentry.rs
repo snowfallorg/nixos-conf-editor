@@ -49,17 +49,16 @@ impl SimpleComponent for SearchEntryModel {
                     x.grab_focus();
                 }
             },
-            #[wrap(Some)]
-            set_child: main_box = &gtk::Box {
+            #[name(main_box)]
+            gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                append = &adw::Clamp {
-                    #[wrap(Some)]
-                    set_child = &gtk::Box {
+                adw::Clamp {
+                    gtk::Box {
                         set_margin_start: 15,
                         set_margin_end: 15,
                         set_spacing: 15,
                         set_orientation: gtk::Orientation::Vertical,
-                        append = &adw::PreferencesGroup {
+                        adw::PreferencesGroup {
                             #[local_ref]
                             add = datalistbox -> gtk::ListBox {
                                 add_css_class: "boxed-list",
@@ -67,7 +66,7 @@ impl SimpleComponent for SearchEntryModel {
                             #[watch]
                             set_visible: !model.data.is_empty(),
                         },
-                        append = &adw::PreferencesGroup {
+                        adw::PreferencesGroup {
                             #[local_ref]
                             add = nameoptslistbox -> gtk::ListBox {
                                 set_margin_bottom: 15,

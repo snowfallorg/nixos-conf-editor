@@ -60,7 +60,7 @@ impl SimpleComponent for OptPageModel {
                     set_spacing: 15,
                     set_vexpand: true,
                     add_css_class: "labels",
-                    append = &gtk::Label {
+                    gtk::Label {
                         set_margin_top: 5,
                         set_margin_bottom: 5,
                         set_halign: gtk::Align::Start,
@@ -186,26 +186,27 @@ impl SimpleComponent for OptPageModel {
                         },
                     },
 
-                    append = &gtk::Box {
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
                         #[watch]
                         set_visible: model.data.example.is_some(),
-                        append: example_box = &gtk::Box {
+                        #[name(example_box)]
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             add_css_class: "header",
                             add_css_class: "single-line",
-                            append: example_header = &gtk::Label {
+                            #[name(example_header)]
+                            gtk::Label {
                                 set_halign: gtk::Align::Start,
                                 add_css_class: "heading",
                                 add_css_class: "h4",
                                 set_label: "Example",
                             }
                         },
-                        append = &gtk::Frame {
+                        gtk::Frame {
                             add_css_class: "code",
-                            #[wrap(Some)]
-                            set_child = &sourceview5::View {
+                            sourceview5::View {
                                 set_editable: false,
                                 set_monospace: true,
                                 set_cursor_visible: false,
@@ -237,16 +238,17 @@ impl SimpleComponent for OptPageModel {
                             },
                         },
                     },
-                    append = &gtk::Separator {
+                    gtk::Separator {
                         set_opacity: 0.0,
                         set_margin_top: 5,
                     },
-                    append = &gtk::Box {
+                    gtk::Box {
                         #[watch]
                         set_visible: valuestack.is_child_visible(),
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append: simplevalue_box = &gtk::Box {
+                        #[name(simplevalue_box)]
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             add_css_class: "header",
                             add_css_class: "single-line",
@@ -256,8 +258,10 @@ impl SimpleComponent for OptPageModel {
                                 set_label: "Value",
                             }
                         },
-                        append: valuestack = &gtk::Stack {
-                            add_child: number = &gtk::SpinButton {
+                        #[name(valuestack)]
+                        gtk::Stack {
+                            #[name(number)]
+                            gtk::SpinButton {
                                 set_halign: gtk::Align::Start,
                                 set_adjustment: &gtk::Adjustment::new(0.0, f64::MIN, f64::MAX, 1.0, 5.0, 0.0),
                                 set_climb_rate: 1.0,
@@ -268,7 +272,8 @@ impl SimpleComponent for OptPageModel {
                                     }
                                 },
                             },
-                            add_child: stringentry = &gtk::Entry {
+                            #[name(stringentry)]
+                            gtk::Entry {
                                 set_halign: gtk::Align::Start,
                                 connect_changed[sender] => move |x| {
                                     if x.is_sensitive() {
@@ -276,10 +281,12 @@ impl SimpleComponent for OptPageModel {
                                     }
                                 },
                             },
-                            add_child: truefalse = &gtk::Box {
+                            #[name(truefalse)]
+                            gtk::Box {
                                 add_css_class: "linked",
                                 set_orientation: gtk::Orientation::Horizontal,
-                                append: truebtn = &gtk::ToggleButton {
+                                #[name(truebtn)]
+                                gtk::ToggleButton {
                                     set_label: "True",
                                     connect_toggled[sender] => move |x| {
                                         if x.is_active() {
@@ -287,7 +294,8 @@ impl SimpleComponent for OptPageModel {
                                         }
                                     }
                                 },
-                                append: falsebtn = &gtk::ToggleButton {
+                                #[name(falsebtn)]
+                                gtk::ToggleButton {
                                     set_label: "False",
                                     set_group: Some(&truebtn),
                                     connect_toggled[sender] => move |x| {
@@ -296,7 +304,8 @@ impl SimpleComponent for OptPageModel {
                                         }
                                     }
                                 },
-                                // append: nullbtn = &gtk::ToggleButton {
+                                // #[name(nullbtn)]
+                                // gtk::ToggleButton {
                                 //     set_label: "null",
                                 //     set_group: Some(&truebtn),
                                 // }
@@ -304,23 +313,23 @@ impl SimpleComponent for OptPageModel {
                         }
                     },
 
-                    append = &gtk::Box {
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 10,
-                        append: value_box = &gtk::Box {
+                        #[name(value_box)]
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             add_css_class: "header",
                             add_css_class: "single-line",
-                            append = &gtk::Label {
+                            gtk::Label {
                                 set_halign: gtk::Align::Start,
                                 add_css_class: "heading",
                                 set_label: "Attribute Value",
                             }
                         },
-                        append = &gtk::Frame {
+                        gtk::Frame {
                             add_css_class: "code",
-                            #[wrap(Some)]
-                            set_child = &sourceview5::View {
+                            sourceview5::View {
                                 set_background_pattern: sourceview5::BackgroundPatternType::Grid,
                                 set_height_request: 100,
                                 set_editable: true,
@@ -356,10 +365,10 @@ impl SimpleComponent for OptPageModel {
                                 }
                             },
                         },
-                        append = &gtk::Box {
+                        gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             set_spacing: 10,
-                            append = &gtk::Button {
+                            gtk::Button {
                                 set_label: "Reset",
                                 #[watch]
                                 set_sensitive: model.conf != model.modifiedconf,
@@ -367,7 +376,7 @@ impl SimpleComponent for OptPageModel {
                                     sender.input(OptPageMsg::ResetConf)
                                 }
                             },
-                            append = &gtk::Button {
+                            gtk::Button {
                                 set_label: "Clear",
                                 #[watch]
                                 set_sensitive: !model.modifiedconf.is_empty(),
@@ -375,10 +384,12 @@ impl SimpleComponent for OptPageModel {
                                     sender.input(OptPageMsg::ClearConf)
                                 }
                             },
-                            append: savestack = &gtk::Stack {
+                            #[name(savestack)]
+                            gtk::Stack {
                                 set_halign: gtk::Align::End,
                                 set_hexpand: true,
-                                add_child: savebtn = &gtk::Button {
+                                #[name(savebtn)]
+                                gtk::Button {
                                     set_label: "Save",
                                     add_css_class: "suggested-action",
                                     #[watch]
@@ -387,7 +398,8 @@ impl SimpleComponent for OptPageModel {
                                         sender.input(OptPageMsg::SaveConf)
                                     },
                                 },
-                                add_child: spinner = &gtk::Spinner {
+                                #[name(spinner)]
+                                gtk::Spinner {
                                     #[watch]
                                     set_spinning: model.saving,
                                 },

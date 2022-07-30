@@ -26,7 +26,8 @@ impl SimpleComponent for SearchPageModel {
     view! {
         view = gtk::Stack {
             set_transition_type: gtk::StackTransitionType::Crossfade,
-            add_child: options = &adw::PreferencesPage {
+            #[name(options)]
+            adw::PreferencesPage {
                 set_title: "Attributes",
                 add = &adw::PreferencesGroup {
                     set_title: "Options",
@@ -44,10 +45,11 @@ impl SimpleComponent for SearchPageModel {
                     },
                 }
             },
-            add_child: empty = &gtk::Box {
+            #[name(empty)]
+            gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_valign: gtk::Align::Center,
-                append = &adw::StatusPage {
+                adw::StatusPage {
                     set_icon_name: Some("edit-find-symbolic"),
                     set_title: "No options found!",
                     set_description: Some("Try a different search"),
