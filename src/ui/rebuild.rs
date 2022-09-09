@@ -216,7 +216,7 @@ impl SimpleComponent for RebuildModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let async_handler = RebuildAsyncHandler::builder()
             .detach_worker(())
@@ -239,7 +239,7 @@ impl SimpleComponent for RebuildModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         self.reset();
         match msg {
             RebuildMsg::Rebuild(f, path, flake) => {
@@ -317,11 +317,11 @@ impl Worker for RebuildAsyncHandler {
     type Input = RebuildAsyncHandlerMsg;
     type Output = RebuildMsg;
 
-    fn init(_params: Self::InitParams, _sender: &relm4::ComponentSender<Self>) -> Self {
+    fn init(_params: Self::InitParams, _sender: relm4::ComponentSender<Self>) -> Self {
         Self
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             RebuildAsyncHandlerMsg::RunRebuild(f, path, flake) => {
                 let exe = match std::env::current_exe() {

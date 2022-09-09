@@ -21,11 +21,11 @@ impl Worker for WindowAsyncHandler {
     type Input = WindowAsyncHandlerMsg;
     type Output = AppMsg;
 
-    fn init(_params: Self::InitParams, _sender: &relm4::ComponentSender<Self>) -> Self {
+    fn init(_params: Self::InitParams, _sender: relm4::ComponentSender<Self>) -> Self {
         Self
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             WindowAsyncHandlerMsg::RunWindow(path) => {
                 match checkcache() {
@@ -146,7 +146,7 @@ impl SimpleComponent for LoadErrorModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = LoadErrorModel {
             hidden: true,
@@ -167,7 +167,7 @@ impl SimpleComponent for LoadErrorModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             LoadErrorMsg::Show(s, s2) => {
                 self.hidden = false;

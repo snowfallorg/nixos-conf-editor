@@ -5,10 +5,10 @@ edition = "2021"
 default-run = "nixos-conf-editor"
 
 [dependencies]
-relm4 = { git = "https://github.com/Relm4/Relm4", tag = "v0.5.0-beta.1", features = ["all"]  }
+relm4 = { git = "https://github.com/Relm4/Relm4", tag = "v0.5.0-beta.2", features = ["all"]  }
 sourceview5 = { git = "https://gitlab.gnome.org/World/Rust/sourceview5-rs/", rev = "6082210f7d1fc32b100bd9c714e9521eecacb3f7", features = ["v5_4"] }
 tracker = "0.1"
-tokio = { version = "1.20", features = ["rt", "macros", "time", "rt-multi-thread", "sync"] }
+tokio = { version = "1.21", features = ["rt", "macros", "time", "rt-multi-thread", "sync"] }
 
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -19,7 +19,7 @@ html2pango = "0.4"
 pandoc = "0.8"
 
 brotli = "3.3"
-curl = "0.4"
+reqwest = { version = "0.11", features = ["blocking"] }
 
 log = "0.4"
 pretty_env_logger = "0.4"

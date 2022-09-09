@@ -13,7 +13,7 @@ pub enum SearchPageMsg {
 
 pub struct SearchPageModel {
     pub options: Vec<(String, bool, String)>,
-    pub oplst: FactoryVecDeque<gtk::ListBox, SearchOption, SearchPageMsg>,
+    pub oplst: FactoryVecDeque<SearchOption>,
 }
 
 #[relm4::component(pub)]
@@ -69,7 +69,7 @@ impl SimpleComponent for SearchPageModel {
     fn init(
         _value: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = SearchPageModel {
             options: vec![],
@@ -82,7 +82,7 @@ impl SimpleComponent for SearchPageModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         let mut oplst_guard = self.oplst.guard();
         match msg {
             SearchPageMsg::Search(query) => {

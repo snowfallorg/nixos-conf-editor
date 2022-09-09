@@ -7,8 +7,8 @@ use relm4::{factory::*, *};
 pub struct SearchEntryModel {
     hidden: bool,
     position: Vec<String>,
-    data: FactoryVecDeque<gtk::ListBox, SearchEntryOption, SearchEntryMsg>,
-    nameopts: FactoryVecDeque<gtk::ListBox, SearchNameEntryOption, SearchEntryMsg>,
+    data: FactoryVecDeque<SearchEntryOption>,
+    nameopts: FactoryVecDeque<SearchNameEntryOption>,
     customopt: Vec<String>,
 }
 
@@ -97,7 +97,7 @@ impl SimpleComponent for SearchEntryModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = SearchEntryModel {
             hidden: true,
@@ -114,7 +114,7 @@ impl SimpleComponent for SearchEntryModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         let mut data_guard = self.data.guard();
         let mut nameopts_guard = self.nameopts.guard();
         match msg {
@@ -226,13 +226,14 @@ enum SearchEntryOptionOutput {
 }
 
 #[relm4::factory]
-impl FactoryComponent<gtk::ListBox, SearchEntryMsg> for SearchEntryOption {
-    type Command = ();
-    type CommandOutput = ();
-    type InitParams = String;
+impl FactoryComponent for SearchEntryOption {
+    type Init = String;
     type Input = ();
     type Output = SearchEntryOptionOutput;
     type Widgets = CounterWidgets;
+    type ParentWidget = gtk::ListBox;
+    type ParentMsg = SearchEntryMsg;
+    type CommandOutput = ();
 
     view! {
         adw::ActionRow {
@@ -240,17 +241,16 @@ impl FactoryComponent<gtk::ListBox, SearchEntryMsg> for SearchEntryOption {
             set_title: &self.value.join("."),
             set_selectable: false,
             set_activatable: true,
-            connect_activated[output, value = self.value.clone()] => move |_| {
-                output.send(SearchEntryOptionOutput::Save(value.to_vec()));
+            connect_activated[sender, value = self.value.clone()] => move |_| {
+                sender.output(SearchEntryOptionOutput::Save(value.to_vec()));
             }
         }
     }
 
     fn init_model(
-        value: Self::InitParams,
+        value: Self::Init,
         _index: &DynamicIndex,
-        _input: &Sender<Self::Input>,
-        _output: &Sender<Self::Output>,
+        _sender: FactoryComponentSender<Self>,
     ) -> Self {
         let v = value
             .split('.')
@@ -278,13 +278,14 @@ enum SearchNameEntryOptionOutput {
 }
 
 #[relm4::factory]
-impl FactoryComponent<gtk::ListBox, SearchEntryMsg> for SearchNameEntryOption {
-    type Command = ();
-    type CommandOutput = ();
-    type InitParams = (String, usize);
+impl FactoryComponent for SearchNameEntryOption {
+    type Init = (String, usize);
     type Input = ();
     type Output = SearchNameEntryOptionOutput;
     type Widgets = SearchNameWidgets;
+    type ParentWidget = gtk::ListBox;
+    type ParentMsg = SearchEntryMsg;
+    type CommandOutput = ();
 
     view! {
         adw::ActionRow {
@@ -294,8 +295,8 @@ impl FactoryComponent<gtk::ListBox, SearchEntryMsg> for SearchNameEntryOption {
                 set_valign: gtk::Align::Center,
                 set_placeholder_text: Some("<name>"),
                 set_buffer = &gtk::EntryBuffer {
-                    connect_text_notify[output, index = self.index] => move |x| {
-                        output.send(SearchNameEntryOptionOutput::SetName(x.text(), index));
+                    connect_text_notify[sender, index = self.index] => move |x| {
+                        sender.output(SearchNameEntryOptionOutput::SetName(x.text(), index));
                     }
                 }
             },
@@ -305,10 +306,9 @@ impl FactoryComponent<gtk::ListBox, SearchEntryMsg> for SearchNameEntryOption {
     }
 
     fn init_model(
-        value: Self::InitParams,
+        value: Self::Init,
         _index: &DynamicIndex,
-        _input: &Sender<Self::Input>,
-        _output: &Sender<Self::Output>,
+        _sender: FactoryComponentSender<Self>,
     ) -> Self {
         Self {
             value: value.0,

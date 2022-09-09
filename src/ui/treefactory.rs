@@ -12,13 +12,14 @@ pub struct AttrPos {
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent<gtk::ListBox, AppMsg> for AttrPos {
-    type Command = ();
-    type CommandOutput = ();
-    type InitParams = AttrPos;
+impl FactoryComponent for AttrPos {
+    type Init = AttrPos;
     type Input = AppMsg;
     type Output = AppMsg;
     type Widgets = AttrWidgets;
+    type ParentWidget = gtk::ListBox;
+    type ParentMsg = AppMsg;
+    type CommandOutput = ();
 
     view! {
         adw::PreferencesRow {
@@ -51,10 +52,9 @@ impl FactoryComponent<gtk::ListBox, AppMsg> for AttrPos {
     }
 
     fn init_model(
-        parent: Self::InitParams,
+        parent: Self::Init,
         _index: &DynamicIndex,
-        _input: &Sender<Self::Input>,
-        _output: &Sender<Self::Output>,
+        _sender: FactoryComponentSender<Self>,
     ) -> Self {
         Self {
             value: parent.value,
@@ -75,13 +75,14 @@ pub struct OptPos {
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent<gtk::ListBox, AppMsg> for OptPos {
-    type Command = ();
-    type CommandOutput = ();
-    type InitParams = OptPos;
+impl FactoryComponent for OptPos {
+    type Init = OptPos;
     type Input = AppMsg;
     type Output = AppMsg;
     type Widgets = OptWidgets;
+    type ParentWidget = gtk::ListBox;
+    type ParentMsg = AppMsg;
+    type CommandOutput = ();
 
     view! {
         adw::PreferencesRow {
@@ -109,10 +110,9 @@ impl FactoryComponent<gtk::ListBox, AppMsg> for OptPos {
     }
 
     fn init_model(
-        parent: Self::InitParams,
+        parent: Self::Init,
         _index: &DynamicIndex,
-        _input: &Sender<Self::Input>,
-        _output: &Sender<Self::Output>,
+        _sender: FactoryComponentSender<Self>,
     ) -> Self {
         Self {
             value: parent.value,
@@ -137,33 +137,33 @@ pub enum AttrBtnMsg {
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent<gtk::Box, AppMsg> for AttrBtn {
-    type Command = ();
-    type CommandOutput = ();
-    type InitParams = AttrBtn;
+impl FactoryComponent for AttrBtn {
+    type Init = AttrBtn;
     type Input = ();
     type Output = AttrBtnMsg;
     type Widgets = AttrBtnWidgets;
+    type ParentWidget = gtk::Box;
+    type ParentMsg = AppMsg;
+    type CommandOutput = ();
 
     view! {
         #[name(button)]
         gtk::Button {
             set_label: self.value.last().unwrap_or(&String::new()),
-            connect_clicked[output, value = self.value.clone(), refvalue = self.refvalue.clone(), opt = self.opt] => move |_| {
+            connect_clicked[sender, value = self.value.clone(), refvalue = self.refvalue.clone(), opt = self.opt] => move |_| {
                 if opt {
-                    output.send(AttrBtnMsg::OpenOption(value.to_vec(), refvalue.to_vec()));
+                    sender.output(AttrBtnMsg::OpenOption(value.to_vec(), refvalue.to_vec()));
                 } else {
-                    output.send(AttrBtnMsg::MoveTo(value.to_vec(), refvalue.to_vec()));
+                    sender.output(AttrBtnMsg::MoveTo(value.to_vec(), refvalue.to_vec()));
                 }
             }
         }
     }
 
     fn init_model(
-        parent: Self::InitParams,
+        parent: Self::Init,
         _index: &DynamicIndex,
-        _input: &Sender<Self::Input>,
-        _output: &Sender<Self::Output>,
+        _sender: FactoryComponentSender<Self>,
     ) -> Self {
         Self {
             value: parent.value,

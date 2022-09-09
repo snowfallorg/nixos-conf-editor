@@ -113,7 +113,7 @@ impl SimpleComponent for PrefModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = PrefModel {
             hidden: true,
@@ -168,7 +168,7 @@ impl SimpleComponent for PrefModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         self.reset();
         match msg {
             PrefMsg::Show(confpath, flake) => {
@@ -286,7 +286,7 @@ impl SimpleComponent for WelcomeModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = WelcomeModel {
             hidden: true,
@@ -331,7 +331,7 @@ impl SimpleComponent for WelcomeModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         self.reset();
         match msg {
             WelcomeMsg::Show => {

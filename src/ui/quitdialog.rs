@@ -57,7 +57,7 @@ impl SimpleComponent for QuitCheckModel {
     fn init(
         init: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = QuitCheckModel {
             app: init.app,
@@ -83,7 +83,7 @@ impl SimpleComponent for QuitCheckModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             QuitCheckMsg::Show => {
                 self.hidden = false;

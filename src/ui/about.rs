@@ -44,7 +44,7 @@ impl SimpleComponent for AboutModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AboutModel {
             hidden: true,
@@ -54,7 +54,7 @@ impl SimpleComponent for AboutModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             AboutMsg::Show => {
                 self.hidden = false;

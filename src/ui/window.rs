@@ -46,11 +46,11 @@ pub struct AppModel {
     pub refposition: Vec<String>,
     tree: AttrTree,
     #[tracker::no_eq]
-    attributes: FactoryVecDeque<gtk::ListBox, AttrPos, AppMsg>,
+    attributes: FactoryVecDeque<AttrPos>,
     #[tracker::no_eq]
-    options: FactoryVecDeque<gtk::ListBox, OptPos, AppMsg>,
+    options: FactoryVecDeque<OptPos>,
     #[tracker::no_eq]
-    posbtn: FactoryVecDeque<gtk::Box, AttrBtn, AppMsg>,
+    posbtn: FactoryVecDeque<AttrBtn>,
     pub conf: HashMap<String, String>,
     page: Page,
     header: HeaderBar,
@@ -368,7 +368,7 @@ impl SimpleComponent for AppModel {
     fn init(
         application: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let windowloading = WindowAsyncHandler::builder()
             .detach_worker(())
@@ -496,7 +496,7 @@ impl SimpleComponent for AppModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         self.reset();
         match msg {
             AppMsg::Welcome => {

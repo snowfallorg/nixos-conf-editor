@@ -489,7 +489,7 @@ impl SimpleComponent for OptPageModel {
     fn init(
         _parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let async_handler = SaveAsyncHandler::builder()
             .detach_worker(())
@@ -514,7 +514,7 @@ impl SimpleComponent for OptPageModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         self.reset();
         match msg {
             OptPageMsg::UpdateOption(data, opt, refopt, conf, alloptions) => {

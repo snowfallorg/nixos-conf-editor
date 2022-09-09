@@ -18,11 +18,11 @@ impl Worker for SaveAsyncHandler {
     type Input = SaveAsyncHandlerMsg;
     type Output = OptPageMsg;
 
-    fn init(_params: Self::InitParams, _sender: &relm4::ComponentSender<Self>) -> Self {
+    fn init(_params: Self::InitParams, _sender: relm4::ComponentSender<Self>) -> Self {
         Self
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf, alloptions) => {
                 info!("Recived SaveCheck message");
@@ -138,7 +138,7 @@ impl SimpleComponent for SaveErrorModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = SaveErrorModel {
             hidden: true,
@@ -185,7 +185,7 @@ impl SimpleComponent for SaveErrorModel {
         msgbuf.set_text(&model.msg);
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             SaveErrorMsg::Show(s) => {
                 self.hidden = false;

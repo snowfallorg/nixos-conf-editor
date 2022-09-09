@@ -52,7 +52,7 @@ impl SimpleComponent for NameEntryModel {
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: &ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = NameEntryModel {
             hidden: true,
@@ -101,7 +101,7 @@ impl SimpleComponent for NameEntryModel {
         }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: &ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             NameEntryMsg::Show(msg, existing) => {
                 self.hidden = false;

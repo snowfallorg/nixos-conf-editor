@@ -9,3 +9,5 @@ TODO
 /src/config.rs
 /result
 result
+/.direnv
+.envrc

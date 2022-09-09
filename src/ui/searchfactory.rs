@@ -9,13 +9,14 @@ pub struct SearchOption {
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent<gtk::ListBox, SearchPageMsg> for SearchOption {
-    type Command = ();
-    type CommandOutput = ();
-    type InitParams = SearchOption;
+impl FactoryComponent for SearchOption {
+    type Init = SearchOption;
     type Input = ();
     type Output = ();
     type Widgets = SearchOptionWidgets;
+    type ParentWidget = gtk::ListBox;
+    type ParentMsg = SearchPageMsg;
+    type CommandOutput = ();
 
     view! {
         adw::PreferencesRow {
@@ -41,10 +42,9 @@ impl FactoryComponent<gtk::ListBox, SearchPageMsg> for SearchOption {
     }
 
     fn init_model(
-        value: Self::InitParams,
+        value: Self::Init,
         _index: &DynamicIndex,
-        _input: &Sender<Self::Input>,
-        _output: &Sender<Self::Output>,
+        _sender: FactoryComponentSender<Self>,
     ) -> Self {
         value
     }
