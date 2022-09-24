@@ -1,14 +1,14 @@
 use super::about::AboutPageModel;
 use super::nameentry::NameEntryModel;
 use super::optionpage::*;
-use super::preferencespage::PrefModel;
-use super::preferencespage::WelcomeModel;
-use super::preferencespage::WelcomeMsg;
+use super::preferencespage::PreferencesPageModel;
 use super::quitdialog::QuitInit;
 use super::rebuild::RebuildModel;
 use super::savechecking::SaveErrorModel;
 use super::savechecking::SaveErrorMsg;
 use super::searchentry::SearchEntryModel;
+use super::welcome::WelcomeModel;
+use super::welcome::WelcomeMsg;
 use super::windowloading::LoadErrorModel;
 use super::windowloading::WindowAsyncHandler;
 use super::windowloading::WindowAsyncHandlerMsg;
@@ -26,7 +26,7 @@ use crate::parse::{
     options::*,
 };
 use crate::ui::nameentry::NameEntryMsg;
-use crate::ui::preferencespage::PrefMsg;
+use crate::ui::preferencespage::PreferencesPageMsg;
 use crate::ui::quitdialog::{QuitCheckModel, QuitCheckMsg};
 use crate::ui::rebuild::RebuildMsg;
 use crate::ui::searchentry::SearchEntryMsg;
@@ -37,6 +37,7 @@ use relm4::gtk::glib::object::Cast;
 use relm4::{actions::*, factory::*, *};
 use std::collections::HashMap;
 use std::convert::identity;
+use std::path::PathBuf;
 
 #[tracker::track]
 pub struct AppModel {
@@ -77,8 +78,6 @@ pub struct AppModel {
     searchpage: Controller<SearchPageModel>,
     #[tracker::no_eq]
     saveerror: Controller<SaveErrorModel>,
-    #[tracker::no_eq]
-    preferences: Controller<PrefModel>,
     #[tracker::no_eq]
     rebuild: Controller<RebuildModel>,
     #[tracker::no_eq]
@@ -133,6 +132,7 @@ pub enum AppMsg {
     SaveConfig,
     ResetConfig,
     ShowPrefMenu,
+    ShowPrefMenuErr,
     SetDarkMode(bool),
     AddAttr,
     AddNameAttr(Option<String>, String),
@@ -384,9 +384,6 @@ impl SimpleComponent for AppModel {
         let saveerror = SaveErrorModel::builder()
             .launch(root.clone().upcast())
             .forward(sender.input_sender(), identity);
-        let preferences = PrefModel::builder()
-            .launch(root.clone().upcast())
-            .forward(sender.input_sender(), identity);
         let rebuild = RebuildModel::builder()
             .launch(root.clone().upcast())
             .forward(sender.input_sender(), identity);
@@ -439,7 +436,6 @@ impl SimpleComponent for AppModel {
             optionpage,
             searchpage,
             saveerror,
-            preferences,
             rebuild,
             welcome,
             nameentry,
@@ -1024,9 +1020,22 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::ShowPrefMenu => {
                 info!("Received AppMsg::ShowPrefMenu");
-                self.preferences.emit(PrefMsg::Show(
-                    self.configpath.to_string(),
-                    self.flake.clone(),
+                let preferencespage = PreferencesPageModel::builder()
+                    .launch(self.mainwindow.clone().upcast())
+                    .forward(sender.input_sender(), identity);
+                preferencespage.emit(PreferencesPageMsg::Show(
+                    PathBuf::from(self.configpath.to_string()),
+                    self.flake.as_ref().map(|x| (PathBuf::from(x.split('#').into_iter().next().unwrap_or(x)), x.split('#').last().unwrap_or("").to_string())),
+                ));
+            }
+            AppMsg::ShowPrefMenuErr => {
+                info!("Received AppMsg::ShowPrefMenuErr");
+                let preferencespage = PreferencesPageModel::builder()
+                    .launch(self.mainwindow.clone().upcast())
+                    .forward(sender.input_sender(), identity);
+                preferencespage.emit(PreferencesPageMsg::ShowErr(
+                    PathBuf::from(self.configpath.to_string()),
+                    self.flake.as_ref().map(|x| (PathBuf::from(x.split('#').into_iter().next().unwrap_or(x)), x.split('#').last().unwrap_or("").to_string())),
                 ));
             }
             AppMsg::SetDarkMode(dark) => {

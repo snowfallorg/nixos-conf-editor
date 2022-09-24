@@ -179,7 +179,10 @@ impl SimpleComponent for LoadErrorModel {
                 sender.output(AppMsg::TryLoad)
             }
             LoadErrorMsg::Close => sender.output(AppMsg::Close),
-            LoadErrorMsg::Preferences => sender.output(AppMsg::ShowPrefMenu),
+            LoadErrorMsg::Preferences => {
+                sender.output(AppMsg::ShowPrefMenuErr);
+                self.hidden = true;
+            },
         }
     }
 }

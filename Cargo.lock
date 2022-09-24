@@ -1191,6 +1191,7 @@ dependencies = [
  "pandoc",
  "pretty_env_logger",
  "relm4",
+ "relm4-components",
  "reqwest",
  "serde",
  "serde_json",
@@ -1591,6 +1592,17 @@ dependencies = [
  "relm4-macros",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "relm4-components"
+version = "0.5.0-beta.2"
+source = "git+https://github.com/Relm4/Relm4?tag=v0.5.0-beta.2#7b0a9387833e6a1d6bf6afbba323451b06b0fb08"
+dependencies = [
+ "log",
+ "once_cell",
+ "relm4",
+ "tracker",
 ]
 
 [[package]]
