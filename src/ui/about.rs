@@ -1,68 +1,46 @@
-use relm4::*;
 use adw::prelude::*;
+use relm4::*;
+
 use crate::config;
 
 use super::window::AppMsg;
 
-pub struct AboutModel {
-    hidden: bool,
-}
-
 #[derive(Debug)]
-pub enum AboutMsg {
-    Show,
-    Hide,
-}
+pub struct AboutPageModel;
 
 #[relm4::component(pub)]
-impl SimpleComponent for AboutModel {
+impl SimpleComponent for AboutPageModel {
     type InitParams = gtk::Window;
-    type Input = AboutMsg;
+    type Input = ();
     type Output = AppMsg;
-    type Widgets = AboutWidgets;
+    type Widgets = AboutPageWidgets;
 
     view! {
-        dialog = gtk::AboutDialog {
+        adw::AboutWindow {
             set_transient_for: Some(&parent_window),
             set_modal: true,
-            #[watch]
-            set_visible: !model.hidden,
-            set_authors: &["<a href=\"https://github.com/vlinkz\">Victor Fuentes</a>"],
-            set_copyright: Some("© 2022 Victor Fuentes"),
+            set_application_name: "NixOS Configuration Editor",
+            set_application_icon: config::APP_ID,
+            set_developer_name: "Victor Fuentes",
+            set_version: config::VERSION,
+            set_issue_url: "https://github.com/vlinkz/nixos-conf-editor/issues",
             set_license_type: gtk::License::Gpl30Only,
-            set_program_name: Some("NixOS Configuration Editor"),
-            set_version: Some(config::VERSION),
-            set_logo_icon_name: Some(config::APP_ID),
-            set_sensitive: true,
-            connect_close_request[sender] => move |_| {
-                sender.input(AboutMsg::Hide);
-                gtk::Inhibit(true)
-            }
+            set_website: "https://github.com/vlinkz/nixos-conf-editor",
+            set_developers: &["Victor Fuentes https://github.com/vlinkz"],
         }
     }
 
     fn init(
         parent_window: Self::InitParams,
         root: &Self::Root,
-        sender: ComponentSender<Self>,
+        _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = AboutModel {
-            hidden: true,
-        };
+        let model = AboutPageModel;
+
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
-        match msg {
-            AboutMsg::Show => {
-                self.hidden = false;
-            },
-            AboutMsg::Hide => {
-                self.hidden = true;
-            }
-        }
-    }
-
+    fn update(&mut self, _msg: Self::Input, _sender: ComponentSender<Self>) {}
 }

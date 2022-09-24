@@ -1,4 +1,4 @@
-use super::about::AboutModel;
+use super::about::AboutPageModel;
 use super::nameentry::NameEntryModel;
 use super::optionpage::*;
 use super::preferencespage::PrefModel;
@@ -25,7 +25,6 @@ use crate::parse::{
     config::{opconfigured, parseconfig},
     options::*,
 };
-use crate::ui::about::AboutMsg;
 use crate::ui::nameentry::NameEntryMsg;
 use crate::ui::preferencespage::PrefMsg;
 use crate::ui::quitdialog::{QuitCheckModel, QuitCheckMsg};
@@ -42,6 +41,7 @@ use std::convert::identity;
 #[tracker::track]
 pub struct AppModel {
     application: adw::Application,
+    mainwindow: adw::ApplicationWindow,
     pub position: Vec<String>,
     pub refposition: Vec<String>,
     tree: AttrTree,
@@ -77,8 +77,6 @@ pub struct AppModel {
     searchpage: Controller<SearchPageModel>,
     #[tracker::no_eq]
     saveerror: Controller<SaveErrorModel>,
-    #[tracker::no_eq]
-    about: Controller<AboutModel>,
     #[tracker::no_eq]
     preferences: Controller<PrefModel>,
     #[tracker::no_eq]
@@ -141,6 +139,7 @@ pub enum AppMsg {
     AddStar(String),
     OpenSearchOption(Vec<String>, Vec<String>),
     SaveQuit,
+    ShowAboutPage,
 }
 
 #[derive(PartialEq, Debug)]
@@ -385,9 +384,6 @@ impl SimpleComponent for AppModel {
         let saveerror = SaveErrorModel::builder()
             .launch(root.clone().upcast())
             .forward(sender.input_sender(), identity);
-        let about = AboutModel::builder()
-            .launch(root.clone().upcast())
-            .forward(sender.input_sender(), identity);
         let preferences = PrefModel::builder()
             .launch(root.clone().upcast())
             .forward(sender.input_sender(), identity);
@@ -414,6 +410,7 @@ impl SimpleComponent for AppModel {
 
         let model = AppModel {
             application,
+            mainwindow: root.clone(),
             position: vec![],
             refposition: vec![],
             tree: AttrTree::default(),
@@ -442,7 +439,6 @@ impl SimpleComponent for AppModel {
             optionpage,
             searchpage,
             saveerror,
-            about,
             preferences,
             rebuild,
             welcome,
@@ -459,14 +455,14 @@ impl SimpleComponent for AppModel {
 
         {
             let group = RelmActionGroup::<MenuActionGroup>::new();
-            let sender = sender.clone();
+            let prefsender = sender.clone();
             let prefaction: RelmAction<PreferencesAction> = RelmAction::new_stateless(move |_| {
-                sender.input(AppMsg::ShowPrefMenu);
+                prefsender.input(AppMsg::ShowPrefMenu);
             });
 
-            let aboutsender = model.about.sender().clone();
+            let aboutsender = sender.clone();
             let aboutaction: RelmAction<AboutAction> = RelmAction::new_stateless(move |_| {
-                aboutsender.send(AboutMsg::Show);
+                aboutsender.input(AppMsg::ShowAboutPage);
             });
             group.add_action(prefaction);
             group.add_action(aboutaction);
@@ -1122,6 +1118,12 @@ impl SimpleComponent for AppModel {
                     self.configpath.to_string(),
                 ));
                 self.editedopts.clear();
+            }
+            AppMsg::ShowAboutPage => {
+                let about = AboutPageModel::builder()
+                    .launch(self.mainwindow.clone().upcast())
+                    .forward(sender.input_sender(), identity);
+                about.widget().show();
             }
             _ => {}
         }
