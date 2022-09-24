@@ -6,7 +6,7 @@ NixOS Configuration Editor
 ===
 
 [![Built with Nix][builtwithnix badge]][builtwithnix]
-[![License: MIT][MIT badge]][MIT]
+[![License: GPLv3][GPLv3 badge]][GPLv3]
 [![Chat on Matrix][matrix badge]][matrix]
 
 A simple NixOS configuration editor application built with [libadwaita](https://gitlab.gnome.org/GNOME/libadwaita), [GTK4](https://www.gtk.org/), and [Relm4](https://relm4.org/). The goal of this project is to provide a simple graphical tool for modifying and managing desktop NixOS configurations.
@@ -98,7 +98,7 @@ The icons in [data/icons](data/icons/) contains assets from the [NixOS logo](htt
 
 [builtwithnix badge]: https://img.shields.io/badge/Built%20With-Nix-41439A?style=for-the-badge&logo=nixos&logoColor=white
 [builtwithnix]: https://builtwithnix.org/
-[MIT badge]: https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge
-[MIT]: https://opensource.org/licenses/MIT
+[GPLv3 badge]: https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge
+[GPLv3]: https://opensource.org/licenses/GPL-3.0
 [matrix badge]: https://img.shields.io/badge/matrix-join%20chat-0cbc8c?style=for-the-badge&logo=matrix&logoColor=white
 [matrix]: https://matrix.to/#/#nixos-gui:matrix.org

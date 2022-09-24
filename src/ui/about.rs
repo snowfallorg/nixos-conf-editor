@@ -29,7 +29,7 @@ impl SimpleComponent for AboutModel {
             set_visible: !model.hidden,
             set_authors: &["<a href=\"https://github.com/vlinkz\">Victor Fuentes</a>"],
             set_copyright: Some("© 2022 Victor Fuentes"),
-            set_license_type: gtk::License::MitX11,
+            set_license_type: gtk::License::Gpl30Only,
             set_program_name: Some("NixOS Configuration Editor"),
             set_version: Some(config::VERSION),
             set_logo_icon_name: Some(config::APP_ID),
