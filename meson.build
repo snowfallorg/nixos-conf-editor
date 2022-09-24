@@ -1,7 +1,7 @@
 project(
   'nixos-conf-editor',
   'rust',
-  version: '0.0.3',
+  version: '0.0.5',
   meson_version: '>= 0.59',
   license: 'MIT',
 )
@@ -14,8 +14,8 @@ base_id = 'dev.vlinkz.NixosConfEditor'
 dependency('openssl', version: '>= 1.0')
 dependency('glib-2.0', version: '>= 2.66')
 dependency('gio-2.0', version: '>= 2.66')
-dependency('gtk4', version: '>= 4.0.0')
-dependency('libadwaita-1', version: '>=1.1.0')
+dependency('gtk4', version: '>= 4.6.0')
+dependency('libadwaita-1', version: '>=1.2.0')
 dependency('polkit-gobject-1', version: '>= 0.103')
 
 glib_compile_resources = find_program('glib-compile-resources', required: true)

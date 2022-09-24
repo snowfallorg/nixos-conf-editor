@@ -3,7 +3,7 @@
 , libadwaita-git ? null
 }:
 let
-  libadwaita-git =
+  libadwaita =
     if libadwaita-git != null
     then libadwaita-git
     else
@@ -20,14 +20,14 @@ let
 in
 pkgs.stdenv.mkDerivation rec {
   pname = "nixos-conf-editor";
-  version = "0.0.4";
+  version = "0.0.5";
 
   src = [ ./. ];
 
   cargoDeps = pkgs.rustPlatform.fetchCargoTarball {
     inherit src;
     name = "${pname}-${version}";
-    hash = "sha256-G1zfkdysjMpAx5ceRq3ApE5axTf8HPWkVz8QHHKNeLY=";
+    hash = "sha256-Xp2NBF8er1ElTUswEd6Rw54wmIvSC4lcdpESs5HhquM=";
   };
 
   nativeBuildInputs = with pkgs; [
@@ -51,7 +51,7 @@ pkgs.stdenv.mkDerivation rec {
     glib
     gtk4
     gtksourceview5
-    libadwaita-git
+    libadwaita
     openssl
     wayland
     gnome.adwaita-icon-theme
