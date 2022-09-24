@@ -1,7 +1,23 @@
-{
-  pkgs ? import <nixpkgs> {},
-  lib ? import <nixpkgs/lib>,
+{ pkgs ? import <nixpkgs> { }
+, lib ? import <nixpkgs/lib>
+, libadwaita-git ? null
 }:
+let
+  libadwaita-git =
+    if libadwaita-git != null
+    then libadwaita-git
+    else
+      pkgs.libadwaita.overrideAttrs (oldAttrs: rec {
+        version = "1.2.0";
+        src = pkgs.fetchFromGitLab {
+          domain = "gitlab.gnome.org";
+          owner = "GNOME";
+          repo = "libadwaita";
+          rev = version;
+          hash = "sha256-3lH7Vi9M8k+GSrCpvruRpLrIpMoOakKbcJlaAc/FK+U=";
+        };
+      });
+in
 pkgs.stdenv.mkDerivation rec {
   pname = "nixos-conf-editor";
   version = "0.0.4";
@@ -35,7 +51,7 @@ pkgs.stdenv.mkDerivation rec {
     glib
     gtk4
     gtksourceview5
-    libadwaita
+    libadwaita-git
     openssl
     wayland
     gnome.adwaita-icon-theme
