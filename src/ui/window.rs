@@ -21,6 +21,8 @@ use crate::parse::config::getarrvals;
 use crate::parse::config::getconfvals;
 use crate::parse::config::opconfigured2;
 use crate::parse::config::readval;
+use crate::parse::preferences::NceConfig;
+use crate::parse::preferences::getconfig;
 use crate::parse::{
     config::{opconfigured, parseconfig},
     options::*,
@@ -31,6 +33,7 @@ use crate::ui::quitdialog::{QuitCheckModel, QuitCheckMsg};
 use crate::ui::rebuild::RebuildMsg;
 use crate::ui::searchentry::SearchEntryMsg;
 use crate::ui::windowloading::LoadErrorMsg;
+use adw::PreferencesPage;
 use adw::prelude::*;
 use log::*;
 use relm4::gtk::glib::object::Cast;
@@ -61,13 +64,16 @@ pub struct AppModel {
     pub editedopts: HashMap<String, String>,
     nameattrs: HashMap<String, Vec<String>>,
     starattrs: HashMap<String, usize>,
-    pub configpath: String,
+    // pub configpath: String,
     pub scheme: Option<sourceview5::StyleScheme>,
     fieldreplace: HashMap<usize, String>,
     nameorstar: AddAttrOptions,
-    flake: Option<String>,
+    // flake: Option<String>,
+    config: NceConfig,
 
     // Components
+    #[tracker::no_eq]
+    preferencespage: Controller<PreferencesPageModel>,
     #[tracker::no_eq]
     windowloading: WorkerController<WindowAsyncHandler>,
     #[tracker::no_eq]
@@ -111,7 +117,7 @@ pub enum AppMsg {
     LoadError(String, String),
     TryLoad,
     Close,
-    SetConfPath(String, Option<String>),
+    SetConfig(NceConfig),
     MoveTo(Vec<String>, Vec<String>),
     MoveToSelf,
     MoveToRow(Vec<String>),
@@ -369,6 +375,12 @@ impl SimpleComponent for AppModel {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+
+        let config = getconfig();
+
+        let preferencespage = PreferencesPageModel::builder()
+            .launch(root.clone().upcast())
+            .forward(sender.input_sender(), identity);
         let windowloading = WindowAsyncHandler::builder()
             .detach_worker(())
             .forward(sender.input_sender(), identity);
@@ -403,7 +415,7 @@ impl SimpleComponent for AppModel {
             })
             .forward(sender.input_sender(), identity);
 
-        windowloading.emit(WindowAsyncHandlerMsg::GetConfigPath);
+        windowloading.emit(WindowAsyncHandlerMsg::GetConfigPath(config.clone()));
 
         let model = AppModel {
             application,
@@ -426,11 +438,13 @@ impl SimpleComponent for AppModel {
             editedopts: HashMap::new(),
             nameattrs: HashMap::new(),
             starattrs: HashMap::new(),
-            configpath: String::from("/etc/nixos/configuration.nix"),
-            flake: None,
+            // configpath: String::from("/etc/nixos/configuration.nix"),
+            // flake: None,
+            config: config.unwrap_or_default(),
             scheme: None,
             fieldreplace: HashMap::new(),
             nameorstar: AddAttrOptions::None,
+            preferencespage,
             windowloading,
             loaderror,
             optionpage,
@@ -528,7 +542,7 @@ impl SimpleComponent for AppModel {
                 info!("Received AppMsg::TryLoad");
                 self.set_busy(true);
                 self.windowloading.emit(WindowAsyncHandlerMsg::RunWindow(
-                    self.configpath.to_string(),
+                    self.config.systemconfig.to_string(),
                 ));
             }
             AppMsg::Close => {
@@ -539,14 +553,15 @@ impl SimpleComponent for AppModel {
                     self.quitdialog.emit(QuitCheckMsg::Show);
                 }
             }
-            AppMsg::SetConfPath(s, b) => {
+            AppMsg::SetConfig(cfg) => {
                 info!("Received AppMsg::SetConfPath");
                 self.set_busy(true);
                 self.set_page(Page::Loading);
-                self.set_configpath(s.clone());
-                self.set_flake(b.clone());
+                self.set_config(cfg.clone());
+                // self.set_configpath(s.clone());
+                // self.set_flake(b.clone());
                 self.windowloading
-                    .emit(WindowAsyncHandlerMsg::SetConfig(s, b));
+                    .emit(WindowAsyncHandlerMsg::SetConfig(cfg));
             }
             AppMsg::MoveToSelf => {
                 info!("Received AppMsg::MoveToSelf");
@@ -610,7 +625,7 @@ impl SimpleComponent for AppModel {
                                 configured: if pos.eq(&newref) {
                                     opconfigured(&self.conf, &pos, op.clone())
                                 } else {
-                                    opconfigured2(&self.configpath, &pos, &newref, op.clone())
+                                    opconfigured2(&self.config.systemconfig, &pos, &newref, op.clone())
                                 },
                                 modified: opconfigured(&self.editedopts, &pos, op),
                             });
@@ -660,7 +675,7 @@ impl SimpleComponent for AppModel {
                             } else if attr == "*" {
                                 debug!("FOUND * ATTR");
                                 hasnameorstar = AddAttrOptions::Star;
-                                let v = getarrvals(&self.configpath, &pos);
+                                let v = getarrvals(&self.config.systemconfig, &pos);
                                 debug!("V: {:?}", v);
                                 for i in 0..v.len() {
                                     let mut p = pos.clone();
@@ -709,7 +724,7 @@ impl SimpleComponent for AppModel {
                                         opconfigured(&self.conf, &pos, attr.to_string())
                                     } else {
                                         opconfigured2(
-                                            &self.configpath,
+                                            &self.config.systemconfig,
                                             &pos,
                                             &newref,
                                             attr.to_string(),
@@ -783,7 +798,7 @@ impl SimpleComponent for AppModel {
                 } else if let Some(n) = self.conf.get(&pos.join(".")) {
                     trace!("CONFIGURED");
                     n.to_string()
-                } else if let Ok(v) = readval(&self.configpath, &pos.join("."), &newref.join(".")) {
+                } else if let Ok(v) = readval(&self.config.systemconfig, &pos.join("."), &newref.join(".")) {
                     trace!("READ");
                     v
                 } else {
@@ -937,7 +952,7 @@ impl SimpleComponent for AppModel {
                     &self.conf,
                     &self.nameattrs,
                     &self.starattrs,
-                    &self.configpath,
+                    &self.config.systemconfig,
                 )
                 .iter()
                 .map(|x| x.join("."))
@@ -971,7 +986,7 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::Rebuild => {
                 info!("Received AppMsg::Rebuild");
-                let conf = match config::editconfigpath(&self.configpath, self.editedopts.clone()) {
+                let conf = match config::editconfigpath(&self.config.systemconfig, self.editedopts.clone()) {
                     Ok(x) => x,
                     Err(e) => {
                         self.rebuild.emit(RebuildMsg::FinishError(Some(format!(
@@ -983,8 +998,8 @@ impl SimpleComponent for AppModel {
                 };
                 self.rebuild.emit(RebuildMsg::Rebuild(
                     conf,
-                    self.configpath.to_string(),
-                    self.flake.clone(),
+                    self.config.systemconfig.to_string(),
+                    self.config.flake.clone(),
                 ));
             }
             AppMsg::ResetConfig => {
@@ -1000,14 +1015,14 @@ impl SimpleComponent for AppModel {
             AppMsg::SaveConfig => {
                 info!("Received AppMsg::SaveConfig");
                 self.update_editedopts(|x| x.clear());
-                let conf = match parseconfig(&self.configpath) {
+                let conf = match parseconfig(&self.config.systemconfig) {
                     Ok(x) => x,
                     Err(_) => {
                         sender.input(AppMsg::LoadError(
                             String::from("Error loading configuration file"),
                             format!(
                                 "<tt>{}</tt> may be an invalid configuration file",
-                                self.configpath
+                                self.config.systemconfig
                             ),
                         ));
                         return;
@@ -1020,23 +1035,11 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::ShowPrefMenu => {
                 info!("Received AppMsg::ShowPrefMenu");
-                let preferencespage = PreferencesPageModel::builder()
-                    .launch(self.mainwindow.clone().upcast())
-                    .forward(sender.input_sender(), identity);
-                preferencespage.emit(PreferencesPageMsg::Show(
-                    PathBuf::from(self.configpath.to_string()),
-                    self.flake.as_ref().map(|x| (PathBuf::from(x.split('#').into_iter().next().unwrap_or(x)), x.split('#').last().unwrap_or("").to_string())),
-                ));
+                self.preferencespage.emit(PreferencesPageMsg::Show(self.config.clone()));
             }
             AppMsg::ShowPrefMenuErr => {
                 info!("Received AppMsg::ShowPrefMenuErr");
-                let preferencespage = PreferencesPageModel::builder()
-                    .launch(self.mainwindow.clone().upcast())
-                    .forward(sender.input_sender(), identity);
-                preferencespage.emit(PreferencesPageMsg::ShowErr(
-                    PathBuf::from(self.configpath.to_string()),
-                    self.flake.as_ref().map(|x| (PathBuf::from(x.split('#').into_iter().next().unwrap_or(x)), x.split('#').last().unwrap_or("").to_string())),
-                ));
+                self.preferencespage.emit(PreferencesPageMsg::ShowErr(self.config.clone()));
             }
             AppMsg::SetDarkMode(dark) => {
                 info!("Received AppMsg::SetDarkMode");
@@ -1112,7 +1115,7 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::SaveQuit => {
                 info!("Received AppMsg::SaveQuit");
-                let conf = match config::editconfigpath(&self.configpath, self.editedopts.clone()) {
+                let conf = match config::editconfigpath(&self.config.systemconfig, self.editedopts.clone()) {
                     Ok(x) => x,
                     Err(e) => {
                         self.rebuild.emit(RebuildMsg::FinishError(Some(format!(
@@ -1124,7 +1127,7 @@ impl SimpleComponent for AppModel {
                 };
                 self.rebuild.emit(RebuildMsg::WriteConfigQuit(
                     conf,
-                    self.configpath.to_string(),
+                    self.config.systemconfig.to_string(),
                 ));
                 self.editedopts.clear();
             }

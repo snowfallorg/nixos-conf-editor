@@ -54,9 +54,9 @@ impl SimpleComponent for RebuildModel {
         dialog = adw::Window {
             set_transient_for: Some(&parent_window),
             set_modal: true,
-            #[track(model.hidden)]
+            #[track(model.changed(RebuildModel::hidden()))]
             set_default_width: 500,
-            #[track(model.hidden)]
+            #[track(model.changed(RebuildModel::hidden()))]
             set_default_height: 200,//295),
             set_resizable: true,
             #[watch]

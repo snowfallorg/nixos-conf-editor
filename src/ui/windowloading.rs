@@ -2,18 +2,19 @@ use super::window::{AppMsg, LoadValues};
 use crate::parse::cache::checkcache;
 use crate::parse::config::parseconfig;
 use crate::parse::options::read;
-use crate::parse::preferences::{checkconfig, configexists, createconfig, readconfig};
+use crate::parse::preferences::{NceConfig, getconfig, editconfig};
 use relm4::adw::prelude::*;
 use relm4::*;
 use std::error::Error;
+use std::path::Path;
 
 pub struct WindowAsyncHandler;
 
 #[derive(Debug)]
 pub enum WindowAsyncHandlerMsg {
     RunWindow(String),
-    GetConfigPath,
-    SetConfig(String, Option<String>),
+    GetConfigPath(Option<NceConfig>),
+    SetConfig(NceConfig),
 }
 
 impl Worker for WindowAsyncHandler {
@@ -64,21 +65,40 @@ impl Worker for WindowAsyncHandler {
                 };
                 sender.output(AppMsg::InitialLoad(LoadValues { data, tree, conf }))
             }
-            WindowAsyncHandlerMsg::GetConfigPath => {
-                if let Ok(false) = configexists() {
+            WindowAsyncHandlerMsg::GetConfigPath(cfg) => {
+                if let Some(config) = cfg {
+                    if Path::new(&config.systemconfig).exists() {
+                        if let Some(flakepath) = &config.flake {
+                            if !Path::new(flakepath).exists() {
+                                sender.output(AppMsg::Welcome);
+                                return;
+                            }
+                        }
+                        sender.output(AppMsg::SetConfig(config));
+                    } else {
+                        sender.output(AppMsg::Welcome);
+                        return;
+                    }
+                } else {
                     sender.output(AppMsg::Welcome);
                     return;
                 }
-                match configvalues() {
-                    Ok((x, y)) => sender.output(AppMsg::SetConfPath(x, y)),
-                    Err(_) => sender.output(AppMsg::LoadError(
-                        String::from("Error loading configuration file"),
-                        String::from("Try launching the application again"),
-                    )),
-                }
+
+                // if !Path::new(&cfg.systemconfig).exists() {
+                    // sender.output(AppMsg::Welcome);
+                    // return;
+                // }
+                
+                // match configvalues() {
+                //     Ok((x, y)) => sender.output(AppMsg::SetConfPath(x, y)),
+                //     Err(_) => sender.output(AppMsg::LoadError(
+                //         String::from("Error loading configuration file"),
+                //         String::from("Try launching the application again"),
+                //     )),
+                // }
             }
-            WindowAsyncHandlerMsg::SetConfig(path, flake) => {
-                match createconfig(path, flake) {
+            WindowAsyncHandlerMsg::SetConfig(cfg) => {
+                match editconfig(cfg) {
                     Ok(_) => sender.output(AppMsg::TryLoad),
                     Err(_) => sender.output(AppMsg::LoadError(
                         String::from("Error loading configuration file"),
@@ -90,11 +110,11 @@ impl Worker for WindowAsyncHandler {
     }
 }
 
-fn configvalues() -> Result<(String, Option<String>), Box<dyn Error>> {
-    let path = checkconfig()?;
-    let config = readconfig(format!("{}/config.json", path))?;
-    Ok(config)
-}
+// fn configvalues() -> Result<(String, Option<String>), Box<dyn Error>> {
+//     let path = checkconfig()?;
+//     let config = readconfig(format!("{}/config.json", path))?;
+//     Ok(config)
+// }
 
 pub struct LoadErrorModel {
     hidden: bool,

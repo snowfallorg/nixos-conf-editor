@@ -4,6 +4,8 @@ use adw::prelude::*;
 use log::info;
 use relm4::*;
 use relm4_components::open_dialog::*;
+use crate::parse::preferences::NceConfig;
+
 use super::window::AppMsg;
 
 #[tracker::track]
@@ -215,7 +217,11 @@ impl SimpleComponent for WelcomeModel {
             }
             WelcomeMsg::Close => {
                 if let Some(confpath) = &self.confpath {
-                    sender.output(AppMsg::SetConfPath(confpath.to_string_lossy().to_string(), self.flakepath.as_ref().map(|x| x.to_string_lossy().to_string())));
+                    sender.output(AppMsg::SetConfig(NceConfig {
+                        systemconfig: confpath.to_string_lossy().to_string(),
+                        flake: self.flakepath.as_ref().map(|x| x.to_string_lossy().to_string()),
+                        flakearg: None
+                    }));
                     self.hidden = true;
                 }
             }
