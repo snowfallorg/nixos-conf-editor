@@ -20,14 +20,14 @@ let
 in
 pkgs.stdenv.mkDerivation rec {
   pname = "nixos-conf-editor";
-  version = "0.0.5";
+  version = "0.0.6";
 
   src = [ ./. ];
 
   cargoDeps = pkgs.rustPlatform.fetchCargoTarball {
     inherit src;
     name = "${pname}-${version}";
-    hash = "sha256-HbNhtgYqx2RquLA81NAGJNzzaC3GBSvjnwpb9NmqPjU=";
+    hash = "sha256-JsQ4tADh6CVdx9GCGB21edyQuc3BR3yo29YW9S0b/vs=";
   };
 
   nativeBuildInputs = with pkgs; [

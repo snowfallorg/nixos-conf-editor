@@ -1,6 +1,6 @@
 [package]
 name = "nixos-conf-editor"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 default-run = "nixos-conf-editor"
 
