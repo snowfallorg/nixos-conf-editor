@@ -29,7 +29,7 @@ pub fn getconfig() -> Option<NceConfig> {
     if let Ok(c) = getconfigval() {
         Some(c)
     } else {
-        None //NceConfig::default()
+        None
     }
 }
 
@@ -41,7 +41,7 @@ fn getconfigval() -> Result<NceConfig, Box<dyn Error>> {
 }
 
 fn checkconfig() -> Result<String, Box<dyn Error>> {
-    let cfgdir = format!("{}/.config/nixos-conf-center", env::var("HOME")?);
+    let cfgdir = format!("{}/.config/nixos-conf-editor", env::var("HOME")?);
     if !Path::is_file(Path::new(&format!("{}/config.json", &cfgdir))) {
         if !Path::is_file(Path::new("/etc/nixos-conf-editor/config.json")) {
             Err(Box::new(std::io::Error::new(

@@ -4,7 +4,7 @@ use adw::prelude::*;
 use log::{debug, info};
 use relm4::*;
 use sourceview5::prelude::*;
-use std::process::Command;
+use std::{process::Command, path::Path};
 
 pub struct SaveAsyncHandler;
 
@@ -57,14 +57,35 @@ impl Worker for SaveAsyncHandler {
                     }
                     format!("{}.type.check", s)
                 };
-                let output = Command::new("nix-instantiate")
+                let output = if Path::new("/nix/var/nix/profiles/per-user/root/channels/nixos").exists() {
+                    Command::new("nix-instantiate")
                     .arg("--eval")
                     .arg("--expr")
                     .arg(format!(
                         "with import <nixpkgs/nixos> {{}}; {} ({})",
                         checkcmd, conf
                     ))
-                    .output();
+                    .output()
+                } else {
+                    match Command::new("nix")
+                        .arg("eval")
+                        .arg("nixpkgs#path")
+                        .output()
+                    {
+                        Ok(nixpath) => {
+                            let nixospath = format!("{}/nixos", String::from_utf8_lossy(&nixpath.stdout).trim());
+                            Command::new("nix-instantiate")
+                                .arg("--eval")
+                                .arg("--expr")
+                                .arg(format!(
+                                    "with import {} {{}}; {} ({})",
+                                    nixospath, checkcmd, conf
+                                ))
+                                .output()
+                        }
+                        Err(e) => Err(e)
+                    }
+                };
                 let (b, s) = match output {
                     Ok(output) => {
                         if output.status.success() {

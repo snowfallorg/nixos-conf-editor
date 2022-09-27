@@ -7,6 +7,7 @@ use relm4::adw::prelude::*;
 use relm4::*;
 use std::error::Error;
 use std::path::Path;
+use log::*;
 
 pub struct WindowAsyncHandler;
 
@@ -66,6 +67,7 @@ impl Worker for WindowAsyncHandler {
                 sender.output(AppMsg::InitialLoad(LoadValues { data, tree, conf }))
             }
             WindowAsyncHandlerMsg::GetConfigPath(cfg) => {
+                warn!("CFG: {:?}", cfg);
                 if let Some(config) = cfg {
                     if Path::new(&config.systemconfig).exists() {
                         if let Some(flakepath) = &config.flake {

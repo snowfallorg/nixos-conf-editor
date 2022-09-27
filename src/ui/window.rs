@@ -377,6 +377,7 @@ impl SimpleComponent for AppModel {
     ) -> ComponentParts<Self> {
 
         let config = getconfig();
+        warn!("GOT CONFIG: {:?}", config);
 
         let preferencespage = PreferencesPageModel::builder()
             .launch(root.clone().upcast())
