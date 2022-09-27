@@ -8,6 +8,7 @@ NixOS Configuration Editor
 [![Built with Nix][builtwithnix badge]][builtwithnix]
 [![License: GPLv3][GPLv3 badge]][GPLv3]
 [![Chat on Matrix][matrix badge]][matrix]
+[![Chat on Discord][discord badge]][discord]
 
 A simple NixOS configuration editor application built with [libadwaita](https://gitlab.gnome.org/GNOME/libadwaita), [GTK4](https://www.gtk.org/), and [Relm4](https://relm4.org/). The goal of this project is to provide a simple graphical tool for modifying and managing desktop NixOS configurations.
 
@@ -26,8 +27,8 @@ let
   nixos-conf-editor = (import (pkgs.fetchFromGitHub {
     owner = "vlinkz";
     repo = "nixos-conf-editor";
-    rev = "0.0.5";
-    sha256 = "0000000000000000000000000000000000000000000000000000";
+    rev = "0.0.6";
+    sha256 = "sha256-wJMUY4OCntFfR1BkTsia5tdNmaF5MBB3/n208Q/MPGA=";
   })) {};
 in
 ```
@@ -101,4 +102,6 @@ The icons in [data/icons](data/icons/) contains assets from the [NixOS logo](htt
 [GPLv3 badge]: https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge
 [GPLv3]: https://opensource.org/licenses/GPL-3.0
 [matrix badge]: https://img.shields.io/badge/matrix-join%20chat-0cbc8c?style=for-the-badge&logo=matrix&logoColor=white
-[matrix]: https://matrix.to/#/#nixos-gui:matrix.org
+[matrix]: https://matrix.to/#/#snowflakeos:matrix.org
+[discord badge]: https://img.shields.io/discord/1021080090676842506?color=7289da&label=Discord&logo=discord&logoColor=ffffff&style=for-the-badge
+[discord]: https://discord.gg/6rWNMmdkgT
