@@ -1,17 +1,18 @@
+use ijson::{IString, IValue};
 use serde_json::{self, Value};
 use serde::{Deserialize, Serialize};
 use std::{self, fs, collections::HashMap, cmp::Ordering, error::Error, env};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default, Clone)]
 pub struct OptionData {
-    pub default: Option<Value>,
-    pub description: String,
+    pub default: Option<IValue>,
+    pub description: IString,
     #[serde(alias = "readOnly")]
     pub read_only: bool,
     #[serde(alias = "type")]
-    pub op_type: String,
-    pub declarations: Vec<String>,
-    pub example: Option<Value>,
+    pub op_type: IString,
+    pub declarations: Vec<IString>,
+    pub example: Option<IValue>,
 }
 
 #[derive(Default, Debug, PartialEq)]

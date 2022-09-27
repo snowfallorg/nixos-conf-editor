@@ -166,7 +166,7 @@ impl SimpleComponent for OptPageModel {
                                     set_style_scheme: model.scheme.as_ref(),
                                     #[watch]
                                     set_text: {
-                                        let x = model.data.default.as_ref().unwrap_or(&serde_json::Value::Null);
+                                        let x = &model.data.default.as_ref().map(|x| ijson::from_value::<serde_json::Value>(x).unwrap_or_default()).unwrap_or(serde_json::Value::Null);
                                         &match x {
                                             serde_json::Value::Object(o) => match o.get("text") {
                                                 Some(serde_json::Value::String(s)) => {
@@ -219,7 +219,7 @@ impl SimpleComponent for OptPageModel {
                                     set_style_scheme: model.scheme.as_ref(),
                                     #[watch]
                                     set_text: {
-                                        let x = model.data.example.as_ref().unwrap_or(&serde_json::Value::Null);
+                                        let x = &model.data.example.as_ref().map(|x| ijson::from_value::<serde_json::Value>(x).unwrap_or_default()).unwrap_or(serde_json::Value::Null);
                                         &match x {
                                             serde_json::Value::Object(o) => match o.get("text") {
                                                 Some(serde_json::Value::String(s)) => {
@@ -456,7 +456,7 @@ impl SimpleComponent for OptPageModel {
                     warn!("Unhandled valuestack child {:?}", x);
                 }
             } else {
-                info!("No simple value widget for type '{}'", model.data.op_type);
+                info!("No simple value widget for type '{}'", model.data.op_type.to_string());
             }
         };
 
@@ -589,7 +589,7 @@ impl SimpleComponent for OptPageModel {
                     } else {
                         //Type mismatch
                         let e =
-                            format!("{} is not of type {}", self.modifiedconf, self.data.op_type);
+                            format!("{} is not of type {}", self.modifiedconf, self.data.op_type.to_string());
                         sender.output(AppMsg::SaveError(e));
                     }
                 } else {

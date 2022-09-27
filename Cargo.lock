@@ -272,6 +272,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "328b822bdcba4d4e402be8d9adb6eebf269f969f8eadef977a553ff3c4fbcb58"
 
 [[package]]
+name = "dashmap"
+version = "4.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
+dependencies = [
+ "cfg-if",
+ "num_cpus",
+]
+
+[[package]]
 name = "either"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -924,6 +934,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ijson"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b96214564d1f12875bd9661b183d8494dd10e373cb693629536fe2f3125e254b"
+dependencies = [
+ "dashmap",
+ "lazy_static",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1185,6 +1207,7 @@ dependencies = [
  "brotli",
  "gtk4",
  "html2pango",
+ "ijson",
  "libadwaita",
  "log",
  "nix-editor",
