@@ -59,7 +59,7 @@
             openssl
             pandoc
             pango
-            pkgconfig
+            pkg-config
             polkit
             wrapGAppsHook4
           ];

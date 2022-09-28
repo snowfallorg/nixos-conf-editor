@@ -64,12 +64,11 @@ pub struct AppModel {
     pub editedopts: HashMap<String, String>,
     nameattrs: HashMap<String, Vec<String>>,
     starattrs: HashMap<String, usize>,
-    // pub configpath: String,
     pub scheme: Option<sourceview5::StyleScheme>,
     fieldreplace: HashMap<usize, String>,
     nameorstar: AddAttrOptions,
-    // flake: Option<String>,
     config: NceConfig,
+    modifiedonly: bool,
 
     // Components
     #[tracker::no_eq]
@@ -146,6 +145,7 @@ pub enum AppMsg {
     OpenSearchOption(Vec<String>, Vec<String>),
     SaveQuit,
     ShowAboutPage,
+    SetModifiedOnly(bool),
 }
 
 #[derive(PartialEq, Debug)]
@@ -342,6 +342,7 @@ impl SimpleComponent for AppModel {
 
     menu! {
         main_menu: {
+            "Modified only" => ModifiedAction(1_u8),
             "Preferences" => PreferencesAction,
             "About" => AboutAction,
         }
@@ -439,9 +440,8 @@ impl SimpleComponent for AppModel {
             editedopts: HashMap::new(),
             nameattrs: HashMap::new(),
             starattrs: HashMap::new(),
-            // configpath: String::from("/etc/nixos/configuration.nix"),
-            // flake: None,
             config: config.unwrap_or_default(),
+            modifiedonly: false,
             scheme: None,
             fieldreplace: HashMap::new(),
             nameorstar: AddAttrOptions::None,
@@ -475,8 +475,16 @@ impl SimpleComponent for AppModel {
             let aboutaction: RelmAction<AboutAction> = RelmAction::new_stateless(move |_| {
                 aboutsender.input(AppMsg::ShowAboutPage);
             });
+
+            let modifiedsender = sender.clone();
+            let modifiedaction: RelmAction<ModifiedAction> = RelmAction::new_stateful_with_target_value(&0, move |_, state, _value| {
+                *state ^= 1;
+                let modified = *state != 0;
+                modifiedsender.input(AppMsg::SetModifiedOnly(modified));
+            });
             group.add_action(prefaction);
             group.add_action(aboutaction);
+            group.add_action(modifiedaction);
             let actions = group.into_action_group();
             widgets
                 .main_window
@@ -616,6 +624,15 @@ impl SimpleComponent for AppModel {
                         sortedoptions.sort();
                         options_guard.clear();
                         for op in sortedoptions {
+                            let configured = if pos.eq(&newref) {
+                                opconfigured(&self.conf, &pos, op.clone())
+                            } else {
+                                opconfigured2(&self.config.systemconfig, &pos, &newref, op.clone())
+                            };
+                            let modified = opconfigured(&self.editedopts, &pos, op.clone());
+                            if self.modifiedonly && !(configured || modified) {
+                                continue;
+                            }
                             let mut o = pos.to_vec();
                             let mut r = newref.to_vec();
                             o.push(op.to_string());
@@ -623,12 +640,8 @@ impl SimpleComponent for AppModel {
                             options_guard.push_back(OptPos {
                                 value: o,
                                 refvalue: r,
-                                configured: if pos.eq(&newref) {
-                                    opconfigured(&self.conf, &pos, op.clone())
-                                } else {
-                                    opconfigured2(&self.config.systemconfig, &pos, &newref, op.clone())
-                                },
-                                modified: opconfigured(&self.editedopts, &pos, op),
+                                configured,
+                                modified,
                             });
                         }
                         attributes_guard.clear();
@@ -714,6 +727,24 @@ impl SimpleComponent for AppModel {
                                     })
                                 }
                             } else {
+                                let configured = if pos.eq(&newref) {
+                                    opconfigured(&self.conf, &pos, attr.to_string())
+                                } else {
+                                    opconfigured2(
+                                        &self.config.systemconfig,
+                                        &pos,
+                                        &newref,
+                                        attr.to_string(),
+                                    )
+                                };
+                                let modified = opconfigured(
+                                    &self.editedopts,
+                                    &newref,
+                                    attr.to_string(),
+                                );
+                                if self.modifiedonly && !(configured || modified) {
+                                    continue;
+                                }
                                 let mut p = pos.to_vec();
                                 let mut r = newref.to_vec();
                                 p.push(attr.to_string());
@@ -721,21 +752,8 @@ impl SimpleComponent for AppModel {
                                 attributes.push(AttrPos {
                                     value: p,
                                     refvalue: r,
-                                    configured: if pos.eq(&newref) {
-                                        opconfigured(&self.conf, &pos, attr.to_string())
-                                    } else {
-                                        opconfigured2(
-                                            &self.config.systemconfig,
-                                            &pos,
-                                            &newref,
-                                            attr.to_string(),
-                                        )
-                                    },
-                                    modified: opconfigured(
-                                        &self.editedopts,
-                                        &newref,
-                                        attr.to_string(),
-                                    ),
+                                    configured,
+                                    modified,
                                     replacefor: None,
                                 });
                             }
@@ -1138,6 +1156,11 @@ impl SimpleComponent for AppModel {
                     .forward(sender.input_sender(), identity);
                 about.widget().show();
             }
+            AppMsg::SetModifiedOnly(modified) => {
+                info!("Received AppMsg::SetModifiedOnly({})", modified);
+                self.set_modifiedonly(modified);
+                sender.input(AppMsg::MoveToSelf)
+            }
             _ => {}
         }
     }
@@ -1146,6 +1169,7 @@ impl SimpleComponent for AppModel {
 relm4::new_action_group!(MenuActionGroup, "menu");
 relm4::new_stateless_action!(PreferencesAction, MenuActionGroup, "preferences");
 relm4::new_stateless_action!(AboutAction, MenuActionGroup, "about");
+relm4::new_stateful_action!(ModifiedAction, MenuActionGroup, "modified", u8, u8);
 
 relm4::new_action_group!(WindowActionGroup, "window");
 relm4::new_stateless_action!(SearchAction, WindowActionGroup, "search");
