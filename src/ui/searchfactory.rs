@@ -6,6 +6,7 @@ use super::searchpage::SearchPageMsg;
 pub struct SearchOption {
     pub value: Vec<String>,
     pub configured: bool,
+    pub modified: bool,
 }
 
 #[relm4::factory(pub)]
@@ -33,8 +34,8 @@ impl FactoryComponent for SearchOption {
                     set_opacity: 0.0,
                 },
                 gtk::Image {
-                    set_icon_name: Some("object-select-symbolic"),
-                    set_visible: self.configured,
+                    set_icon_name: if self.modified { Some("system-run-symbolic") } else { Some("object-select-symbolic") },
+                    set_visible: self.configured || self.modified,
                 },
             },
             set_title: &self.value.join("."),

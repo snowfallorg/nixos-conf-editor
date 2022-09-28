@@ -914,11 +914,12 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::ShowSearchPage(s) if !self.busy => {
                 info!("Received AppMsg::ShowSearchPage");
-                self.searchpage.emit(SearchPageMsg::Search(s));
+                self.searchpage.emit(SearchPageMsg::Search(s, self.editedopts.clone()));
                 self.set_search(true)
             }
             AppMsg::HideSearchPage => {
                 info!("Received AppMsg::HideSearchPage");
+                sender.input(AppMsg::MoveToSelf);
                 self.set_search(false)
             }
             AppMsg::ShowSearchPageEntry(pos) => {
@@ -1159,7 +1160,10 @@ impl SimpleComponent for AppModel {
             AppMsg::SetModifiedOnly(modified) => {
                 info!("Received AppMsg::SetModifiedOnly({})", modified);
                 self.set_modifiedonly(modified);
-                sender.input(AppMsg::MoveToSelf)
+                self.searchpage.emit(SearchPageMsg::SetModifiedOnly(modified, self.search));
+                if !self.search {
+                    sender.input(AppMsg::MoveToSelf)
+                }
             }
             _ => {}
         }

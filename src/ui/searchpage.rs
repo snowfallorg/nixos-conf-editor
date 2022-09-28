@@ -1,4 +1,6 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashMap};
+
+use crate::parse::config::opconfigured;
 
 use super::{searchfactory::SearchOption, window::*};
 use adw::prelude::*;
@@ -6,14 +8,17 @@ use relm4::{factory::*, *};
 
 #[derive(Debug)]
 pub enum SearchPageMsg {
-    Search(String),
+    Search(String, HashMap<String, String>),
     OpenOption(Vec<String>, Option<Vec<String>>),
     LoadOptions(Vec<(String, bool, String)>),
+    SetModifiedOnly(bool, bool),
 }
 
 pub struct SearchPageModel {
     pub options: Vec<(String, bool, String)>,
     pub oplst: FactoryVecDeque<SearchOption>,
+    query: String,
+    modifiedonly: bool,
 }
 
 #[relm4::component(pub)]
@@ -74,6 +79,8 @@ impl SimpleComponent for SearchPageModel {
         let model = SearchPageModel {
             options: vec![],
             oplst: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            query: String::default(),
+            modifiedonly: false,
         };
         let oplstbox = model.oplst.widget();
 
@@ -85,7 +92,8 @@ impl SimpleComponent for SearchPageModel {
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         let mut oplst_guard = self.oplst.guard();
         match msg {
-            SearchPageMsg::Search(query) => {
+            SearchPageMsg::Search(query, editedopts) => {
+                self.query = query.to_string();
                 oplst_guard.clear();
                 let q = query.split_whitespace();
                 let mut sortedoptions = self.options.clone();
@@ -127,13 +135,19 @@ impl SimpleComponent for SearchPageModel {
                                 false
                             }
                     }) {
+                        let configured = opt.1;
+                        let modified = opconfigured(&editedopts, &[], opt.0.clone());
+                        if self.modifiedonly && !(configured || modified) {
+                            continue;
+                        }
                         oplst_guard.push_back(SearchOption {
                             value: opt
                                 .0
                                 .split('.')
                                 .map(|s| s.to_string())
                                 .collect::<Vec<String>>(),
-                            configured: opt.1,
+                            configured,
+                            modified
                         });
                     }
                     if oplst_guard.len() >= 1000 {
@@ -153,6 +167,12 @@ impl SimpleComponent for SearchPageModel {
             }
             SearchPageMsg::LoadOptions(options) => {
                 self.options = options;
+            }
+            SearchPageMsg::SetModifiedOnly(modified, search) => {
+                self.modifiedonly = modified;
+                if search {
+                    sender.output(AppMsg::ShowSearchPage(self.query.clone()));
+                }
             }
         }
     }
