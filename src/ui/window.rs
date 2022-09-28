@@ -871,8 +871,8 @@ impl SimpleComponent for AppModel {
                 self.set_position(pos);
                 self.set_refposition(newref);
                 self.set_header(HeaderBar::List);
-                self.set_search(false);
                 self.set_page(Page::Option);
+                self.set_search(false);
             }
             AppMsg::OpenOptionRow(pos) => {
                 info!("Received AppMsg::OpenOptionRow");
@@ -919,7 +919,9 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::HideSearchPage => {
                 info!("Received AppMsg::HideSearchPage");
-                sender.input(AppMsg::MoveToSelf);
+                if self.page == Page::List {
+                    sender.input(AppMsg::MoveToSelf);
+                }
                 self.set_search(false)
             }
             AppMsg::ShowSearchPageEntry(pos) => {
@@ -1161,7 +1163,7 @@ impl SimpleComponent for AppModel {
                 info!("Received AppMsg::SetModifiedOnly({})", modified);
                 self.set_modifiedonly(modified);
                 self.searchpage.emit(SearchPageMsg::SetModifiedOnly(modified, self.search));
-                if !self.search {
+                if !self.search && self.page == Page::List {
                     sender.input(AppMsg::MoveToSelf)
                 }
             }
