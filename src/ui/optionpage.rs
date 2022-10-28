@@ -89,7 +89,8 @@ impl SimpleComponent for OptPageModel {
                             add_css_class: "body",
                             #[track(model.changed(OptPageModel::data()))]
                             set_markup: {
-                                let x = format!("<article xmlns=\"http://docbook.org/ns/docbook\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"5.0\" xml:lang=\"en\"><para>\n{}\n</para></article>", model.data.description.trim());
+                                let x = format!("<article xmlns=\"http://docbook.org/ns/docbook\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"5.0\" xml:lang=\"en\"><para>\n{}\n</para></article>",
+                                    model.data.description.as_string().map(|x| x.to_string()).unwrap_or_default().trim());
                                 let mut pandoc = pandoc::new();
                                 pandoc.set_input(pandoc::InputKind::Pipe(x));
                                 pandoc.set_output(pandoc::OutputKind::Pipe);
@@ -456,7 +457,10 @@ impl SimpleComponent for OptPageModel {
                     warn!("Unhandled valuestack child {:?}", x);
                 }
             } else {
-                info!("No simple value widget for type '{}'", model.data.op_type.to_string());
+                info!(
+                    "No simple value widget for type '{}'",
+                    model.data.op_type.to_string()
+                );
             }
         };
 
@@ -588,8 +592,11 @@ impl SimpleComponent for OptPageModel {
                         self.update_resettracker(|_| ()); // Simulate reset
                     } else {
                         //Type mismatch
-                        let e =
-                            format!("{} is not of type {}", self.modifiedconf, self.data.op_type.as_str());
+                        let e = format!(
+                            "{} is not of type {}",
+                            self.modifiedconf,
+                            self.data.op_type.as_str()
+                        );
                         sender.output(AppMsg::SaveError(e));
                     }
                 } else {

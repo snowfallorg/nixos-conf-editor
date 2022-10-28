@@ -32,7 +32,8 @@ impl Worker for WindowAsyncHandler {
             WindowAsyncHandlerMsg::RunWindow(path) => {
                 let optionfile = match nix_data::cache::nixos::nixosoptions() {
                     Ok(x) => x,
-                    Err(_) => {
+                    Err(e) => {
+                        error!("{}", e);
                         sender.output(AppMsg::LoadError(
                             String::from("Could not load cache"),
                             String::from(
@@ -45,7 +46,8 @@ impl Worker for WindowAsyncHandler {
 
                 let (data, tree) = match read(&optionfile) {
                     Ok(x) => x,
-                    Err(_) => {
+                    Err(e) => {
+                        error!("{}", e);
                         sender.output(AppMsg::LoadError(
                             String::from("Could not load options"),
                             String::from("Try launching the application again"),
@@ -56,7 +58,8 @@ impl Worker for WindowAsyncHandler {
 
                 let conf = match parseconfig(&path) {
                     Ok(x) => x,
-                    Err(_) => {
+                    Err(e) => {
+                        error!("{}", e);
                         sender.output(AppMsg::LoadError(
                             String::from("Error loading configuration file"),
                             format!("<tt>{}</tt> may be an invalid configuration file", path),

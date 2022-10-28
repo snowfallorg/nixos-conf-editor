@@ -6,7 +6,7 @@ use std::{self, fs, collections::HashMap, cmp::Ordering, error::Error};
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default, Clone)]
 pub struct OptionData {
     pub default: Option<IValue>,
-    pub description: IString,
+    pub description: IValue,
     #[serde(alias = "readOnly")]
     pub read_only: bool,
     #[serde(alias = "type")]

@@ -534,7 +534,7 @@ impl SimpleComponent for AppModel {
                         (
                             k.to_string(),
                             opconfigured(&self.conf, &v, attr),
-                            data.description.to_string(),
+                            data.description.as_string().map(|x| x.to_string()).unwrap_or_default(),
                         )
                     })
                     .collect::<Vec<_>>();
