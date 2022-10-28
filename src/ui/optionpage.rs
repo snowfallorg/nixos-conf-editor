@@ -589,7 +589,7 @@ impl SimpleComponent for OptPageModel {
                     } else {
                         //Type mismatch
                         let e =
-                            format!("{} is not of type {}", self.modifiedconf, self.data.op_type.to_string());
+                            format!("{} is not of type {}", self.modifiedconf, self.data.op_type.as_str());
                         sender.output(AppMsg::SaveError(e));
                     }
                 } else {

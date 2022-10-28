@@ -2,7 +2,7 @@ use adw::prelude::*;
 use relm4::{*, factory::*};
 use super::searchpage::SearchPageMsg;
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct SearchOption {
     pub value: Vec<String>,
     pub configured: bool,

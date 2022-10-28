@@ -21,7 +21,6 @@ use crate::parse::config::getarrvals;
 use crate::parse::config::getconfvals;
 use crate::parse::config::opconfigured2;
 use crate::parse::config::readval;
-use crate::parse::preferences::NceConfig;
 use crate::parse::preferences::getconfig;
 use crate::parse::{
     config::{opconfigured, parseconfig},
@@ -33,14 +32,13 @@ use crate::ui::quitdialog::{QuitCheckModel, QuitCheckMsg};
 use crate::ui::rebuild::RebuildMsg;
 use crate::ui::searchentry::SearchEntryMsg;
 use crate::ui::windowloading::LoadErrorMsg;
-use adw::PreferencesPage;
 use adw::prelude::*;
 use log::*;
+use nix_data::config::configfile::NixDataConfig;
 use relm4::gtk::glib::object::Cast;
 use relm4::{actions::*, factory::*, *};
 use std::collections::HashMap;
 use std::convert::identity;
-use std::path::PathBuf;
 
 #[tracker::track]
 pub struct AppModel {
@@ -67,7 +65,7 @@ pub struct AppModel {
     pub scheme: Option<sourceview5::StyleScheme>,
     fieldreplace: HashMap<usize, String>,
     nameorstar: AddAttrOptions,
-    config: NceConfig,
+    config: NixDataConfig,
     modifiedonly: bool,
 
     // Components
@@ -116,7 +114,7 @@ pub enum AppMsg {
     LoadError(String, String),
     TryLoad,
     Close,
-    SetConfig(NceConfig),
+    SetConfig(NixDataConfig),
     MoveTo(Vec<String>, Vec<String>),
     MoveToSelf,
     MoveToRow(Vec<String>),
@@ -173,7 +171,6 @@ impl SimpleComponent for AppModel {
         main_window = adw::ApplicationWindow {
             set_default_width: 1000,
             set_default_height: 650,
-            //add_css_class: "devel",
             #[watch]
             set_sensitive: !model.busy,
             connect_close_request[sender] => move |_| {
@@ -376,7 +373,6 @@ impl SimpleComponent for AppModel {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-
         let config = getconfig();
         warn!("GOT CONFIG: {:?}", config);
 
@@ -440,7 +436,15 @@ impl SimpleComponent for AppModel {
             editedopts: HashMap::new(),
             nameattrs: HashMap::new(),
             starattrs: HashMap::new(),
-            config: config.unwrap_or_default(),
+            config: if let Some(cfg) = config {
+                cfg
+            } else {
+                NixDataConfig {
+                    systemconfig: Some(String::from("/etc/nixos/configuration.nix")),
+                    flake: None,
+                    flakearg: None,
+                }
+            },
             modifiedonly: false,
             scheme: None,
             fieldreplace: HashMap::new(),
@@ -477,11 +481,12 @@ impl SimpleComponent for AppModel {
             });
 
             let modifiedsender = sender.clone();
-            let modifiedaction: RelmAction<ModifiedAction> = RelmAction::new_stateful_with_target_value(&0, move |_, state, _value| {
-                *state ^= 1;
-                let modified = *state != 0;
-                modifiedsender.input(AppMsg::SetModifiedOnly(modified));
-            });
+            let modifiedaction: RelmAction<ModifiedAction> =
+                RelmAction::new_stateful_with_target_value(&0, move |_, state, _value| {
+                    *state ^= 1;
+                    let modified = *state != 0;
+                    modifiedsender.input(AppMsg::SetModifiedOnly(modified));
+                });
             group.add_action(prefaction);
             group.add_action(aboutaction);
             group.add_action(modifiedaction);
@@ -551,7 +556,7 @@ impl SimpleComponent for AppModel {
                 info!("Received AppMsg::TryLoad");
                 self.set_busy(true);
                 self.windowloading.emit(WindowAsyncHandlerMsg::RunWindow(
-                    self.config.systemconfig.to_string(),
+                    self.config.systemconfig.as_ref().unwrap().to_string(),
                 ));
             }
             AppMsg::Close => {
@@ -627,7 +632,12 @@ impl SimpleComponent for AppModel {
                             let configured = if pos.eq(&newref) {
                                 opconfigured(&self.conf, &pos, op.clone())
                             } else {
-                                opconfigured2(&self.config.systemconfig, &pos, &newref, op.clone())
+                                opconfigured2(
+                                    self.config.systemconfig.as_ref().unwrap(),
+                                    &pos,
+                                    &newref,
+                                    op.clone(),
+                                )
                             };
                             let modified = opconfigured(&self.editedopts, &pos, op.clone());
                             if self.modifiedonly && !(configured || modified) {
@@ -689,7 +699,8 @@ impl SimpleComponent for AppModel {
                             } else if attr == "*" {
                                 debug!("FOUND * ATTR");
                                 hasnameorstar = AddAttrOptions::Star;
-                                let v = getarrvals(&self.config.systemconfig, &pos);
+                                let v =
+                                    getarrvals(self.config.systemconfig.as_ref().unwrap(), &pos);
                                 debug!("V: {:?}", v);
                                 for i in 0..v.len() {
                                     let mut p = pos.clone();
@@ -731,17 +742,14 @@ impl SimpleComponent for AppModel {
                                     opconfigured(&self.conf, &pos, attr.to_string())
                                 } else {
                                     opconfigured2(
-                                        &self.config.systemconfig,
+                                        self.config.systemconfig.as_ref().unwrap(),
                                         &pos,
                                         &newref,
                                         attr.to_string(),
                                     )
                                 };
-                                let modified = opconfigured(
-                                    &self.editedopts,
-                                    &newref,
-                                    attr.to_string(),
-                                );
+                                let modified =
+                                    opconfigured(&self.editedopts, &newref, attr.to_string());
                                 if self.modifiedonly && !(configured || modified) {
                                     continue;
                                 }
@@ -817,7 +825,11 @@ impl SimpleComponent for AppModel {
                 } else if let Some(n) = self.conf.get(&pos.join(".")) {
                     trace!("CONFIGURED");
                     n.to_string()
-                } else if let Ok(v) = readval(&self.config.systemconfig, &pos.join("."), &newref.join(".")) {
+                } else if let Ok(v) = readval(
+                    self.config.systemconfig.as_ref().unwrap(),
+                    &pos.join("."),
+                    &newref.join("."),
+                ) {
                     trace!("READ");
                     v
                 } else {
@@ -914,7 +926,8 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::ShowSearchPage(s) if !self.busy => {
                 info!("Received AppMsg::ShowSearchPage");
-                self.searchpage.emit(SearchPageMsg::Search(s, self.editedopts.clone()));
+                self.searchpage
+                    .emit(SearchPageMsg::Search(s, self.editedopts.clone()));
                 self.set_search(true)
             }
             AppMsg::HideSearchPage => {
@@ -950,7 +963,7 @@ impl SimpleComponent for AppModel {
                             }
                             return out;
                         } else if pos[i] == "*" {
-                            let v = getarrvals(configpath, &pos[..i].to_vec());
+                            let v = getarrvals(configpath, &pos[..i]);
                             let mut n = v.len();
                             if let Some(x) = starattrs.get(&pos[..i].join(".")) {
                                 n += *x;
@@ -966,7 +979,7 @@ impl SimpleComponent for AppModel {
                             return out;
                         }
                     }
-                    return vec![pos.to_vec()];
+                    vec![pos.to_vec()]
                 }
 
                 let data = getposdata(
@@ -974,7 +987,7 @@ impl SimpleComponent for AppModel {
                     &self.conf,
                     &self.nameattrs,
                     &self.starattrs,
-                    &self.config.systemconfig,
+                    self.config.systemconfig.as_ref().unwrap(),
                 )
                 .iter()
                 .map(|x| x.join("."))
@@ -1008,7 +1021,10 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::Rebuild => {
                 info!("Received AppMsg::Rebuild");
-                let conf = match config::editconfigpath(&self.config.systemconfig, self.editedopts.clone()) {
+                let conf = match config::editconfigpath(
+                    self.config.systemconfig.as_ref().unwrap(),
+                    self.editedopts.clone(),
+                ) {
                     Ok(x) => x,
                     Err(e) => {
                         self.rebuild.emit(RebuildMsg::FinishError(Some(format!(
@@ -1020,7 +1036,7 @@ impl SimpleComponent for AppModel {
                 };
                 self.rebuild.emit(RebuildMsg::Rebuild(
                     conf,
-                    self.config.systemconfig.to_string(),
+                    self.config.systemconfig.as_ref().unwrap().to_string(),
                     self.config.flake.clone(),
                 ));
             }
@@ -1037,14 +1053,14 @@ impl SimpleComponent for AppModel {
             AppMsg::SaveConfig => {
                 info!("Received AppMsg::SaveConfig");
                 self.update_editedopts(|x| x.clear());
-                let conf = match parseconfig(&self.config.systemconfig) {
+                let conf = match parseconfig(self.config.systemconfig.as_ref().unwrap()) {
                     Ok(x) => x,
                     Err(_) => {
                         sender.input(AppMsg::LoadError(
                             String::from("Error loading configuration file"),
                             format!(
                                 "<tt>{}</tt> may be an invalid configuration file",
-                                self.config.systemconfig
+                                self.config.systemconfig.as_ref().unwrap()
                             ),
                         ));
                         return;
@@ -1057,11 +1073,13 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::ShowPrefMenu => {
                 info!("Received AppMsg::ShowPrefMenu");
-                self.preferencespage.emit(PreferencesPageMsg::Show(self.config.clone()));
+                self.preferencespage
+                    .emit(PreferencesPageMsg::Show(self.config.clone()));
             }
             AppMsg::ShowPrefMenuErr => {
                 info!("Received AppMsg::ShowPrefMenuErr");
-                self.preferencespage.emit(PreferencesPageMsg::ShowErr(self.config.clone()));
+                self.preferencespage
+                    .emit(PreferencesPageMsg::ShowErr(self.config.clone()));
             }
             AppMsg::SetDarkMode(dark) => {
                 info!("Received AppMsg::SetDarkMode");
@@ -1137,7 +1155,10 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::SaveQuit => {
                 info!("Received AppMsg::SaveQuit");
-                let conf = match config::editconfigpath(&self.config.systemconfig, self.editedopts.clone()) {
+                let conf = match config::editconfigpath(
+                    self.config.systemconfig.as_ref().unwrap(),
+                    self.editedopts.clone(),
+                ) {
                     Ok(x) => x,
                     Err(e) => {
                         self.rebuild.emit(RebuildMsg::FinishError(Some(format!(
@@ -1149,7 +1170,7 @@ impl SimpleComponent for AppModel {
                 };
                 self.rebuild.emit(RebuildMsg::WriteConfigQuit(
                     conf,
-                    self.config.systemconfig.to_string(),
+                    self.config.systemconfig.as_ref().unwrap().to_string(),
                 ));
                 self.editedopts.clear();
             }
@@ -1162,7 +1183,8 @@ impl SimpleComponent for AppModel {
             AppMsg::SetModifiedOnly(modified) => {
                 info!("Received AppMsg::SetModifiedOnly({})", modified);
                 self.set_modifiedonly(modified);
-                self.searchpage.emit(SearchPageMsg::SetModifiedOnly(modified, self.search));
+                self.searchpage
+                    .emit(SearchPageMsg::SetModifiedOnly(modified, self.search));
                 if !self.search && self.page == Page::List {
                     sender.input(AppMsg::MoveToSelf)
                 }

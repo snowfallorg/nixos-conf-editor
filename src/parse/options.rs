@@ -1,9 +1,9 @@
 use ijson::{IString, IValue};
-use serde_json::{self, Value};
+use serde_json;
 use serde::{Deserialize, Serialize};
-use std::{self, fs, collections::HashMap, cmp::Ordering, error::Error, env};
+use std::{self, fs, collections::HashMap, cmp::Ordering, error::Error};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default, Clone)]
 pub struct OptionData {
     pub default: Option<IValue>,
     pub description: IString,
@@ -21,9 +21,8 @@ pub struct AttrTree {
     pub options: Vec<String>
 }
 
-pub fn read() -> Result<(HashMap<String, OptionData>, AttrTree), Box<dyn Error>> {
-    let cachedir = format!("{}/.cache/nixos-conf-editor", env::var("HOME")?);
-    let f = fs::read_to_string(format!("{cachedir}/options.json"))?;
+pub fn read(file: &str) -> Result<(HashMap<String, OptionData>, AttrTree), Box<dyn Error>> {
+    let f = fs::read_to_string(file)?;
     let data: HashMap<String, OptionData> = serde_json::from_str(&f)?;
     let ops = data.keys().map(|x| x.as_str()).collect::<Vec<_>>();
     let tree = buildtree(ops)?;

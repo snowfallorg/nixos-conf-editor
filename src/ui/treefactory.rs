@@ -2,7 +2,7 @@ use super::window::*;
 use adw::prelude::*;
 use relm4::{factory::*, *};
 
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct AttrPos {
     pub value: Vec<String>,
     pub refvalue: Vec<String>,
@@ -66,7 +66,7 @@ impl FactoryComponent for AttrPos {
     }
 }
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct OptPos {
     pub value: Vec<String>,
     pub refvalue: Vec<String>,
@@ -123,7 +123,7 @@ impl FactoryComponent for OptPos {
     }
 }
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct AttrBtn {
     pub value: Vec<String>,
     pub refvalue: Vec<String>,

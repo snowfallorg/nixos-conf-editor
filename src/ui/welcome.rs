@@ -2,21 +2,17 @@ use std::path::{PathBuf, Path};
 
 use adw::prelude::*;
 use log::info;
+use nix_data::config::configfile::NixDataConfig;
 use relm4::*;
 use relm4_components::open_dialog::*;
-use crate::parse::preferences::NceConfig;
 
 use super::window::AppMsg;
 
-#[tracker::track]
 pub struct WelcomeModel {
     hidden: bool,
     confpath: Option<PathBuf>,
-    flake: bool,
     flakepath: Option<PathBuf>,
-    #[tracker::no_eq]
     conf_dialog: Controller<OpenDialog>,
-    #[tracker::no_eq]
     flake_dialog: Controller<OpenDialog>,
 }
 
@@ -195,11 +191,9 @@ impl SimpleComponent for WelcomeModel {
         let model = WelcomeModel {
             hidden: true,
             confpath: if Path::new("/etc/nixos/configuration.nix").exists() { Some(PathBuf::from("/etc/nixos/configuration.nix")) } else { None }, // parent_window.configpath.to_string(),
-            flake: false,
             flakepath: None,
             conf_dialog,
             flake_dialog,
-            tracker: 0,
         };
 
         let widgets = view_output!();
@@ -210,15 +204,14 @@ impl SimpleComponent for WelcomeModel {
     }
 
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
-        self.reset();
         match msg {
             WelcomeMsg::Show => {
                 self.hidden = false;
             }
             WelcomeMsg::Close => {
                 if let Some(confpath) = &self.confpath {
-                    sender.output(AppMsg::SetConfig(NceConfig {
-                        systemconfig: confpath.to_string_lossy().to_string(),
+                    sender.output(AppMsg::SetConfig(NixDataConfig {
+                        systemconfig: Some(confpath.to_string_lossy().to_string()),
                         flake: self.flakepath.as_ref().map(|x| x.to_string_lossy().to_string()),
                         flakearg: None
                     }));
@@ -227,15 +220,15 @@ impl SimpleComponent for WelcomeModel {
             }
             WelcomeMsg::UpdateConfPath(s) => {
                 info!("Set configuration path to {}", s.to_string_lossy());
-                self.set_confpath(Some(s));
+                self.confpath = Some(s);
             }
             WelcomeMsg::UpdateFlakePath(s) => {
                 info!("Set flake path to {}", s.to_string_lossy());
-                self.set_flakepath(Some(s));
+                self.flakepath = Some(s);
             }
             WelcomeMsg::ClearFlakePath => {
                 info!("Clear flake path");
-                self.set_flakepath(None);
+                self.flakepath = None;
             }
             WelcomeMsg::OpenConf => {
                 self.conf_dialog.emit(OpenDialogMsg::Open)

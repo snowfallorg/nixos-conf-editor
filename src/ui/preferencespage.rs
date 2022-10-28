@@ -1,9 +1,7 @@
 use std::path::PathBuf;
-
-use crate::parse::preferences::NceConfig;
-
 use super::window::AppMsg;
 use adw::prelude::*;
+use nix_data::config::configfile::NixDataConfig;
 use relm4::*;
 use relm4_components::open_dialog::*;
 
@@ -26,8 +24,8 @@ pub struct PreferencesPageModel {
 
 #[derive(Debug)]
 pub enum PreferencesPageMsg {
-    Show(NceConfig),
-    ShowErr(NceConfig),
+    Show(NixDataConfig),
+    ShowErr(NixDataConfig),
     Open,
     OpenFlake,
     SetConfigPath(PathBuf),
@@ -158,7 +156,7 @@ impl SimpleComponent for PreferencesPageModel {
                         } @flakeentry,
                         #[track(model.changed(PreferencesPageModel::flake()))]
                         #[block_signal(flakeentry)]
-                        set_text: &model.flakearg.as_ref().unwrap_or(&String::new())
+                        set_text: model.flakearg.as_ref().unwrap_or(&String::new())
                     }
 
                 }
@@ -208,21 +206,25 @@ impl SimpleComponent for PreferencesPageModel {
         self.reset();
         match msg {
             PreferencesPageMsg::Show(config) => {
-                self.configpath = PathBuf::from(&config.systemconfig);
-                self.origconfigpath = PathBuf::from(&config.systemconfig);
-                self.set_flake(config.flake.as_ref().map(|x| PathBuf::from(x)));
+                if let Some(systemconfig) = &config.systemconfig {
+                    self.configpath = PathBuf::from(systemconfig);
+                    self.origconfigpath = PathBuf::from(systemconfig);
+                }
+                self.set_flake(config.flake.as_ref().map(PathBuf::from));
                 self.origflake = self.flake.clone();
-                self.set_flakearg(config.flakearg.clone());
+                self.set_flakearg(config.flakearg);
                 self.origflakearg = self.flakearg.clone();
                 self.prefwindow.show();
                 self.error = false;
             }
             PreferencesPageMsg::ShowErr(config) => {
-                self.configpath = PathBuf::from(&config.systemconfig);
-                self.origconfigpath = PathBuf::from(&config.systemconfig);
-                self.set_flake(config.flake.as_ref().map(|x| PathBuf::from(x)));
+                if let Some(systemconfig) = &config.systemconfig {
+                    self.configpath = PathBuf::from(systemconfig);
+                    self.origconfigpath = PathBuf::from(systemconfig);
+                }
+                self.set_flake(config.flake.as_ref().map(PathBuf::from));
                 self.origflake = self.flake.clone();
-                self.set_flakearg(config.flakearg.clone());
+                self.set_flakearg(config.flakearg);
                 self.origflakearg = self.flakearg.clone();
                 self.prefwindow.present();
                 self.error = true;
@@ -240,8 +242,8 @@ impl SimpleComponent for PreferencesPageModel {
             }
             PreferencesPageMsg::Close => {
                 if !self.configpath.eq(&self.origconfigpath) || !self.flake.eq(&self.origflake) || !self.flakearg.eq(&self.origflakearg) || self.error {
-                    sender.output(AppMsg::SetConfig(NceConfig {
-                        systemconfig: self.configpath.to_string_lossy().to_string(),
+                    sender.output(AppMsg::SetConfig(NixDataConfig {
+                        systemconfig: Some(self.configpath.to_string_lossy().to_string()),
                         flake: self.flake.as_ref().map(|x| x.to_string_lossy().to_string()),
                         flakearg: self.flakearg.clone(),
                     }));
