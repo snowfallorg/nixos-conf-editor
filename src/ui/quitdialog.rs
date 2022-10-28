@@ -1,9 +1,8 @@
+use super::window::AppMsg;
 use adw::prelude::*;
 use relm4::*;
-use super::window::AppMsg;
 
 pub struct QuitCheckModel {
-    app: adw::Application,
     hidden: bool,
     busy: bool,
 }
@@ -16,21 +15,16 @@ pub enum QuitCheckMsg {
     Quit,
 }
 
-pub struct QuitInit {
-    pub window: gtk::Window,
-    pub app: adw::Application,
-}
-
 #[relm4::component(pub)]
 impl SimpleComponent for QuitCheckModel {
-    type InitParams = QuitInit;
+    type Init = gtk::Window;
     type Input = QuitCheckMsg;
     type Output = AppMsg;
     type Widgets = QuitCheckWidgets;
 
     view! {
         dialog = gtk::MessageDialog {
-            set_transient_for: Some(&init.window),
+            set_transient_for: Some(&init),
             set_modal: true,
             #[watch]
             set_visible: !model.hidden,
@@ -55,27 +49,29 @@ impl SimpleComponent for QuitCheckModel {
     }
 
     fn init(
-        init: Self::InitParams,
+        init: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = QuitCheckModel {
-            app: init.app,
             hidden: true,
             busy: false,
         };
 
         let widgets = view_output!();
 
-        let rebuild_widget = widgets.dialog
+        let rebuild_widget = widgets
+            .dialog
             .widget_for_response(gtk::ResponseType::Accept)
             .expect("No button for accept response set");
         rebuild_widget.add_css_class("suggested-action");
-        let save_widget = widgets.dialog
+        let save_widget = widgets
+            .dialog
             .widget_for_response(gtk::ResponseType::Reject)
             .expect("No button for reject response set");
         save_widget.add_css_class("warning");
-        let quit_widget = widgets.dialog
+        let quit_widget = widgets
+            .dialog
             .widget_for_response(gtk::ResponseType::Close)
             .expect("No button for close response set");
         quit_widget.add_css_class("destructive-action");
@@ -88,18 +84,18 @@ impl SimpleComponent for QuitCheckModel {
             QuitCheckMsg::Show => {
                 self.hidden = false;
                 self.busy = false;
-            },
+            }
             QuitCheckMsg::Save => {
                 self.busy = true;
                 sender.output(AppMsg::SaveQuit);
-            },
+            }
             QuitCheckMsg::Rebuild => {
                 self.hidden = true;
                 sender.output(AppMsg::Rebuild);
-            },
+            }
             QuitCheckMsg::Quit => {
-                self.app.quit()
-            },
+                relm4::main_application().quit();
+            }
         }
     }
 }

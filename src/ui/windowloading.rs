@@ -19,11 +19,11 @@ pub enum WindowAsyncHandlerMsg {
 }
 
 impl Worker for WindowAsyncHandler {
-    type InitParams = ();
+    type Init = ();
     type Input = WindowAsyncHandlerMsg;
     type Output = AppMsg;
 
-    fn init(_params: Self::InitParams, _sender: relm4::ComponentSender<Self>) -> Self {
+    fn init(_params: Self::Init, _sender: relm4::ComponentSender<Self>) -> Self {
         Self
     }
 
@@ -117,7 +117,7 @@ pub enum LoadErrorMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for LoadErrorModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = LoadErrorMsg;
     type Output = AppMsg;
     type Widgets = LoadErrorWidgets;
@@ -149,7 +149,7 @@ impl SimpleComponent for LoadErrorModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

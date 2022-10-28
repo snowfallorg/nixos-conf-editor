@@ -30,7 +30,7 @@ pub enum WelcomeMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for WelcomeModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = WelcomeMsg;
     type Output = AppMsg;
     type Widgets = WelcomeWidgets;
@@ -164,7 +164,7 @@ impl SimpleComponent for WelcomeModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -172,7 +172,7 @@ impl SimpleComponent for WelcomeModel {
         let conf_dialog = OpenDialog::builder()
             .transient_for_native(root)
             .launch(OpenDialogSettings::default())
-            .forward(&sender.input, |response| match response {
+            .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => WelcomeMsg::UpdateConfPath(path),
                 OpenDialogResponse::Cancel => WelcomeMsg::Ignore,
         });
@@ -181,7 +181,7 @@ impl SimpleComponent for WelcomeModel {
         let flake_dialog = OpenDialog::builder()
             .transient_for_native(root)
             .launch(OpenDialogSettings::default())
-            .forward(&sender.input, |response| match response {
+            .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => WelcomeMsg::UpdateFlakePath(path),
                 OpenDialogResponse::Cancel => WelcomeMsg::Ignore,
         });

@@ -19,7 +19,7 @@ pub enum NameEntryMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for NameEntryModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = NameEntryMsg;
     type Output = AppMsg;
     type Widgets = NameEntryWidgets;
@@ -50,7 +50,7 @@ impl SimpleComponent for NameEntryModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

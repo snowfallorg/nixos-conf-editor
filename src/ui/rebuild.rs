@@ -45,7 +45,7 @@ enum RebuildStatus {
 
 #[relm4::component(pub)]
 impl SimpleComponent for RebuildModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = RebuildMsg;
     type Output = AppMsg;
     type Widgets = RebuildWidgets;
@@ -214,7 +214,7 @@ impl SimpleComponent for RebuildModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -313,11 +313,11 @@ pub enum RebuildAsyncHandlerMsg {
 pub struct RebuildAsyncHandler;
 
 impl Worker for RebuildAsyncHandler {
-    type InitParams = ();
+    type Init = ();
     type Input = RebuildAsyncHandlerMsg;
     type Output = RebuildMsg;
 
-    fn init(_params: Self::InitParams, _sender: relm4::ComponentSender<Self>) -> Self {
+    fn init(_params: Self::Init, _sender: relm4::ComponentSender<Self>) -> Self {
         Self
     }
 

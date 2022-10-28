@@ -1,44 +1,27 @@
 { pkgs ? import <nixpkgs> { }
 , lib ? import <nixpkgs/lib>
-, libadwaita-git ? null
 }:
-let
-  libadwaita =
-    if libadwaita-git != null
-    then libadwaita-git
-    else
-      pkgs.libadwaita.overrideAttrs (oldAttrs: rec {
-        version = "1.2.0";
-        src = pkgs.fetchFromGitLab {
-          domain = "gitlab.gnome.org";
-          owner = "GNOME";
-          repo = "libadwaita";
-          rev = version;
-          hash = "sha256-3lH7Vi9M8k+GSrCpvruRpLrIpMoOakKbcJlaAc/FK+U=";
-        };
-      });
-in
 pkgs.stdenv.mkDerivation rec {
   pname = "nixos-conf-editor";
-  version = "0.0.6";
+  version = "0.1.0";
 
   src = [ ./. ];
 
   cargoDeps = pkgs.rustPlatform.fetchCargoTarball {
     inherit src;
     name = "${pname}-${version}";
-    hash = "sha256-JsQ4tADh6CVdx9GCGB21edyQuc3BR3yo29YW9S0b/vs=";
+    hash = "sha256-PohU+Ot9iqemR5sQ70Mb7TP0FxSVrprFcx9/gqedN9Q=";
   };
 
   nativeBuildInputs = with pkgs; [
     appstream-glib
-    polkit
-    gettext
     desktop-file-utils
+    gettext
+    git
     meson
     ninja
     pkg-config
-    git
+    polkit
     wrapGAppsHook4
   ] ++ (with pkgs.rustPlatform; [
     cargoSetupHook
@@ -49,12 +32,12 @@ pkgs.stdenv.mkDerivation rec {
   buildInputs = with pkgs; [
     gdk-pixbuf
     glib
+    gnome.adwaita-icon-theme
     gtk4
     gtksourceview5
     libadwaita
     openssl
     wayland
-    gnome.adwaita-icon-theme
   ];
 
   postInstall = ''

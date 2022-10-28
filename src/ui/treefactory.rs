@@ -18,7 +18,7 @@ impl FactoryComponent for AttrPos {
     type Output = AppMsg;
     type Widgets = AttrWidgets;
     type ParentWidget = gtk::ListBox;
-    type ParentMsg = AppMsg;
+    type ParentInput = AppMsg;
     type CommandOutput = ();
 
     view! {
@@ -81,7 +81,7 @@ impl FactoryComponent for OptPos {
     type Output = AppMsg;
     type Widgets = OptWidgets;
     type ParentWidget = gtk::ListBox;
-    type ParentMsg = AppMsg;
+    type ParentInput = AppMsg;
     type CommandOutput = ();
 
     view! {
@@ -143,7 +143,7 @@ impl FactoryComponent for AttrBtn {
     type Output = AttrBtnMsg;
     type Widgets = AttrBtnWidgets;
     type ParentWidget = gtk::Box;
-    type ParentMsg = AppMsg;
+    type ParentInput = AppMsg;
     type CommandOutput = ();
 
     view! {
@@ -172,7 +172,7 @@ impl FactoryComponent for AttrBtn {
         }
     }
 
-    fn output_to_parent_msg(output: Self::Output) -> Option<AppMsg> {
+    fn output_to_parent_input(output: Self::Output) -> Option<AppMsg> {
         Some(match output {
             AttrBtnMsg::OpenOption(v, r) => AppMsg::OpenOption(v, r),
             AttrBtnMsg::MoveTo(v, r) => AppMsg::MoveTo(v, r),

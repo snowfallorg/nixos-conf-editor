@@ -27,6 +27,6 @@ cargo_build = custom_target(
     cargo, 'build',
     cargo_options,
     '&&',
-    'cp', 'src' / rust_target / 'nce-helper', '@OUTPUT@',
+    'cp', 'nce-helper' / 'src' / rust_target / 'nce-helper', '@OUTPUT@',
   ]
 )

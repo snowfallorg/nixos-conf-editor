@@ -14,11 +14,11 @@ pub enum SaveAsyncHandlerMsg {
 }
 
 impl Worker for SaveAsyncHandler {
-    type InitParams = ();
+    type Init = ();
     type Input = SaveAsyncHandlerMsg;
     type Output = OptPageMsg;
 
-    fn init(_params: Self::InitParams, _sender: relm4::ComponentSender<Self>) -> Self {
+    fn init(_params: Self::Init, _sender: relm4::ComponentSender<Self>) -> Self {
         Self
     }
 
@@ -121,7 +121,7 @@ pub enum SaveErrorMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for SaveErrorModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = SaveErrorMsg;
     type Output = AppMsg;
     type Widgets = SaveErrorWidgets;
@@ -157,7 +157,7 @@ impl SimpleComponent for SaveErrorModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

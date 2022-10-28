@@ -22,7 +22,7 @@ pub enum SearchEntryMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for SearchEntryModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = SearchEntryMsg;
     type Output = AppMsg;
     type Widgets = SearchEntryWidgets;
@@ -95,15 +95,15 @@ impl SimpleComponent for SearchEntryModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = SearchEntryModel {
             hidden: true,
             position: Vec::default(),
-            data: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
-            nameopts: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            data: FactoryVecDeque::new(gtk::ListBox::new(), sender.input_sender()),
+            nameopts: FactoryVecDeque::new(gtk::ListBox::new(), sender.input_sender()),
             customopt: Vec::default(),
         };
         let datalistbox = model.data.widget();
@@ -232,7 +232,7 @@ impl FactoryComponent for SearchEntryOption {
     type Output = SearchEntryOptionOutput;
     type Widgets = CounterWidgets;
     type ParentWidget = gtk::ListBox;
-    type ParentMsg = SearchEntryMsg;
+    type ParentInput = SearchEntryMsg;
     type CommandOutput = ();
 
     view! {
@@ -259,7 +259,7 @@ impl FactoryComponent for SearchEntryOption {
         Self { value: v }
     }
 
-    fn output_to_parent_msg(output: Self::Output) -> Option<SearchEntryMsg> {
+    fn output_to_parent_input(output: Self::Output) -> Option<SearchEntryMsg> {
         Some(match output {
             SearchEntryOptionOutput::Save(v) => SearchEntryMsg::Save(Some(v)),
         })
@@ -284,7 +284,7 @@ impl FactoryComponent for SearchNameEntryOption {
     type Output = SearchNameEntryOptionOutput;
     type Widgets = SearchNameWidgets;
     type ParentWidget = gtk::ListBox;
-    type ParentMsg = SearchEntryMsg;
+    type ParentInput = SearchEntryMsg;
     type CommandOutput = ();
 
     view! {
@@ -316,7 +316,7 @@ impl FactoryComponent for SearchNameEntryOption {
         }
     }
 
-    fn output_to_parent_msg(output: Self::Output) -> Option<SearchEntryMsg> {
+    fn output_to_parent_input(output: Self::Output) -> Option<SearchEntryMsg> {
         Some(match output {
             SearchNameEntryOptionOutput::SetName(x, i) => SearchEntryMsg::SetName(x, i),
         })

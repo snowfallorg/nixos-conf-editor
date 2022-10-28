@@ -6,11 +6,11 @@ use std::{
     process::Command,
 };
 
-#[derive(clap::Subcommand)]
+#[derive(Subcommand, Debug)]
 enum SubCommands {
     Config {
         /// Write stdin to file in path output
-        #[clap(short, long)]
+        #[arg(short, long)]
         output: String,
     },
     Rebuild {

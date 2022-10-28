@@ -46,7 +46,7 @@ pub struct OptPageModel {
 
 #[relm4::component(pub)]
 impl SimpleComponent for OptPageModel {
-    type InitParams = ();
+    type Init = ();
     type Input = OptPageMsg;
     type Output = AppMsg;
     type Widgets = OptPageWidgets;
@@ -487,7 +487,7 @@ impl SimpleComponent for OptPageModel {
     }
 
     fn init(
-        _parent_window: Self::InitParams,
+        _parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

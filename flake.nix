@@ -10,23 +10,12 @@
         pkgs = import nixpkgs {
           inherit system;
         };
-        libadwaita-git = pkgs.libadwaita.overrideAttrs (oldAttrs: rec {
-          version = "1.2.0";
-          src = pkgs.fetchFromGitLab {
-            domain = "gitlab.gnome.org";
-            owner = "GNOME";
-            repo = "libadwaita";
-            rev = version;
-            hash = "sha256-3lH7Vi9M8k+GSrCpvruRpLrIpMoOakKbcJlaAc/FK+U=";
-          };
-        });
         name = "nixos-conf-editor";
       in
       rec
       {
         packages.${name} = pkgs.callPackage ./default.nix {
           inherit (inputs);
-          libadwaita-git = libadwaita-git;
         };
 
         # `nix build`
@@ -53,7 +42,7 @@
             graphene
             gtk4
             gtksourceview5
-            libadwaita-git
+            libadwaita
             meson
             ninja
             openssl

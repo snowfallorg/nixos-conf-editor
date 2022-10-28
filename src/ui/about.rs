@@ -10,7 +10,7 @@ pub struct AboutPageModel;
 
 #[relm4::component(pub)]
 impl SimpleComponent for AboutPageModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = ();
     type Output = AppMsg;
     type Widgets = AboutPageWidgets;
@@ -31,7 +31,7 @@ impl SimpleComponent for AboutPageModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

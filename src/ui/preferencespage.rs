@@ -37,7 +37,7 @@ pub enum PreferencesPageMsg {
 
 #[relm4::component(pub)]
 impl SimpleComponent for PreferencesPageModel {
-    type InitParams = gtk::Window;
+    type Init = gtk::Window;
     type Input = PreferencesPageMsg;
     type Output = AppMsg;
     type Widgets = PreferencesPageWidgets;
@@ -165,21 +165,21 @@ impl SimpleComponent for PreferencesPageModel {
     }
 
     fn init(
-        parent_window: Self::InitParams,
+        parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let open_dialog = OpenDialog::builder()
             .transient_for_native(root)
             .launch(OpenDialogSettings::default())
-            .forward(&sender.input, |response| match response {
+            .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => PreferencesPageMsg::SetConfigPath(path),
                 OpenDialogResponse::Cancel => PreferencesPageMsg::Ignore,
             });
         let flake_file_dialog = OpenDialog::builder()
             .transient_for_native(root)
             .launch(OpenDialogSettings::default())
-            .forward(&sender.input, |response| match response {
+            .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => PreferencesPageMsg::SetFlakePath(Some(path)),
                 OpenDialogResponse::Cancel => PreferencesPageMsg::Ignore,
             });

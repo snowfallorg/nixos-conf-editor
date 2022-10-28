@@ -23,7 +23,7 @@ pub struct SearchPageModel {
 
 #[relm4::component(pub)]
 impl SimpleComponent for SearchPageModel {
-    type InitParams = ();
+    type Init = ();
     type Input = SearchPageMsg;
     type Output = AppMsg;
     type Widgets = SearchPageWidgets;
@@ -72,13 +72,13 @@ impl SimpleComponent for SearchPageModel {
     }
 
     fn init(
-        _value: Self::InitParams,
+        _value: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = SearchPageModel {
             options: vec![],
-            oplst: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            oplst: FactoryVecDeque::new(gtk::ListBox::new(), sender.input_sender()),
             query: String::default(),
             modifiedonly: false,
         };

@@ -16,7 +16,7 @@ impl FactoryComponent for SearchOption {
     type Output = ();
     type Widgets = SearchOptionWidgets;
     type ParentWidget = gtk::ListBox;
-    type ParentMsg = SearchPageMsg;
+    type ParentInput = SearchPageMsg;
     type CommandOutput = ();
 
     view! {

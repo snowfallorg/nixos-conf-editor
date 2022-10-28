@@ -2,7 +2,6 @@ use super::about::AboutPageModel;
 use super::nameentry::NameEntryModel;
 use super::optionpage::*;
 use super::preferencespage::PreferencesPageModel;
-use super::quitdialog::QuitInit;
 use super::rebuild::RebuildModel;
 use super::savechecking::SaveErrorModel;
 use super::savechecking::SaveErrorMsg;
@@ -42,7 +41,7 @@ use std::convert::identity;
 
 #[tracker::track]
 pub struct AppModel {
-    application: adw::Application,
+    // application: adw::Application,
     mainwindow: adw::ApplicationWindow,
     pub position: Vec<String>,
     pub refposition: Vec<String>,
@@ -162,7 +161,7 @@ enum HeaderBar {
 
 #[relm4::component(pub)]
 impl SimpleComponent for AppModel {
-    type InitParams = adw::Application;
+    type Init = ();
     type Input = AppMsg;
     type Output = ();
     type Widgets = AppWidgets;
@@ -369,7 +368,7 @@ impl SimpleComponent for AppModel {
     }
 
     fn init(
-        application: Self::InitParams,
+        (): Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -407,25 +406,21 @@ impl SimpleComponent for AppModel {
             .launch(root.clone().upcast())
             .forward(sender.input_sender(), identity);
         let quitdialog = QuitCheckModel::builder()
-            .launch(QuitInit {
-                window: root.clone().upcast(),
-                app: application.clone(),
-            })
+            .launch(root.clone().upcast())
             .forward(sender.input_sender(), identity);
 
         windowloading.emit(WindowAsyncHandlerMsg::GetConfigPath(config.clone()));
 
         let model = AppModel {
-            application,
             mainwindow: root.clone(),
             position: vec![],
             refposition: vec![],
             tree: AttrTree::default(),
-            attributes: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
-            options: FactoryVecDeque::new(gtk::ListBox::new(), &sender.input),
+            attributes: FactoryVecDeque::new(gtk::ListBox::new(), sender.input_sender()),
+            options: FactoryVecDeque::new(gtk::ListBox::new(), sender.input_sender()),
             posbtn: FactoryVecDeque::new(
                 gtk::Box::new(gtk::Orientation::Horizontal, 0),
-                &sender.input,
+                sender.input_sender(),
             ),
             conf: HashMap::new(),
             page: Page::Loading,
@@ -487,9 +482,9 @@ impl SimpleComponent for AppModel {
                     let modified = *state != 0;
                     modifiedsender.input(AppMsg::SetModifiedOnly(modified));
                 });
-            group.add_action(prefaction);
-            group.add_action(aboutaction);
-            group.add_action(modifiedaction);
+            group.add_action(&prefaction);
+            group.add_action(&aboutaction);
+            group.add_action(&modifiedaction);
             let actions = group.into_action_group();
             widgets
                 .main_window
@@ -501,7 +496,7 @@ impl SimpleComponent for AppModel {
             let searchaction: RelmAction<SearchAction> = RelmAction::new_stateless(move |_| {
                 sender.input(AppMsg::ToggleSearch);
             });
-            group.add_action(searchaction);
+            group.add_action(&searchaction);
             let actions = group.into_action_group();
             widgets
                 .main_window
@@ -562,7 +557,7 @@ impl SimpleComponent for AppModel {
             AppMsg::Close => {
                 info!("Received AppMsg::Close");
                 if self.editedopts.is_empty() {
-                    self.application.quit();
+                    relm4::main_application().quit();
                 } else {
                     self.quitdialog.emit(QuitCheckMsg::Show);
                 }
@@ -1201,10 +1196,3 @@ relm4::new_stateful_action!(ModifiedAction, MenuActionGroup, "modified", u8, u8)
 
 relm4::new_action_group!(WindowActionGroup, "window");
 relm4::new_stateless_action!(SearchAction, WindowActionGroup, "search");
-
-pub fn run() {
-    let app = RelmApp::new(crate::config::APP_ID);
-    let application = app.app.clone();
-    application.set_accelerators_for_action::<SearchAction>(&["<Control>f"]);
-    app.run::<AppModel>(application);
-}
