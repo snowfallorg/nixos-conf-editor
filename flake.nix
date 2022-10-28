@@ -54,13 +54,5 @@
           ];
           RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         };
-
-        nixosModules.nixos-conf-editor = ({ config, ... }: import ./modules/default.nix {
-          inherit pkgs;
-          inherit (pkgs) lib;
-          inherit config;
-          nixos-conf-editor = defaultPackage;
-        });
-        nixosModules.default = nixosModules.nixos-conf-editor;
       });
 }
