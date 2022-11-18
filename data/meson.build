@@ -82,7 +82,7 @@ configure_file(
   install_dir: datadir / 'glib-2.0' / 'schemas'
 )
 
-# Validata GSchema
+# Validate GSchema
 if glib_compile_schemas.found()
   test(
     'validate-gschema', glib_compile_schemas,

@@ -25,7 +25,7 @@ impl Worker for SaveAsyncHandler {
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             SaveAsyncHandlerMsg::SaveCheck(opt, refopt, conf, alloptions) => {
-                info!("Recived SaveCheck message");
+                info!("Received SaveCheck message");
                 debug!("opt: {}\nrefopt: {}", opt, refopt);
                 // For users.users.<name>.autoSubUidGidRange
                 // (options.users.users.type.getSubOptions []).autoSubUidGidRange.type.check
