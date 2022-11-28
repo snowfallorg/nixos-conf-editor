@@ -1447,9 +1447,10 @@ checksum = "e4a24736216ec316047a1fc4252e27dabb04218aa4a3f37c6e7ddbf1f9782b54"
 [[package]]
 name = "nix-data"
 version = "0.0.2"
-source = "git+https://github.com/snowflakelinux/nix-data#a5168c768e8cf8bd3e1afe1772f8e05e5b03ed95"
+source = "git+https://github.com/snowflakelinux/nix-data#a75a234c2ffa661b6d3f6d276dc372677e5e2c74"
 dependencies = [
  "anyhow",
+ "brotli",
  "csv",
  "ijson",
  "lazy_static",
