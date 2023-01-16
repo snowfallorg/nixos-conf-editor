@@ -1032,7 +1032,7 @@ impl SimpleComponent for AppModel {
                 self.rebuild.emit(RebuildMsg::Rebuild(
                     conf,
                     self.config.systemconfig.as_ref().unwrap().to_string(),
-                    self.config.flake.clone(),
+                    self.config.flake.clone().map(|x| if let Some(flakearg) = &self.config.flakearg { format!("{}#{}", x, flakearg) } else { x }),
                 ));
             }
             AppMsg::ResetConfig => {

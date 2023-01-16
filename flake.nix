@@ -26,7 +26,7 @@
           inherit name;
           drv = packages.${name};
         };
-        defaultApp = packages.${name};
+        defaultApp = apps.${name};
 
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
