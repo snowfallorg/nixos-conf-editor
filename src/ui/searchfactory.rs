@@ -1,6 +1,6 @@
-use adw::prelude::*;
-use relm4::{*, factory::*};
 use super::searchpage::SearchPageMsg;
+use adw::prelude::*;
+use relm4::{factory::*, *};
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct SearchOption {
@@ -42,12 +42,7 @@ impl FactoryComponent for SearchOption {
         }
     }
 
-    fn init_model(
-        value: Self::Init,
-        _index: &DynamicIndex,
-        _sender: FactoryComponentSender<Self>,
-    ) -> Self {
+    fn init_model(value: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
         value
     }
-
 }

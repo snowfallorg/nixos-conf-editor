@@ -77,7 +77,8 @@ impl SimpleComponent for NameEntryModel {
         let widgets = view_output!();
 
         widgets.dialog.content_area().append(&widgets.textentry);
-        let accept_widget = widgets.dialog
+        let accept_widget = widgets
+            .dialog
             .widget_for_response(gtk::ResponseType::Accept)
             .expect("No button for accept response set");
         accept_widget.set_sensitive(false);
@@ -112,7 +113,7 @@ impl SimpleComponent for NameEntryModel {
             NameEntryMsg::Cancel => self.hidden = true,
             NameEntryMsg::Save => {
                 self.hidden = true;
-                sender.output(AppMsg::AddNameAttr(None, self.text.clone()));
+                let _ = sender.output(AppMsg::AddNameAttr(None, self.text.clone()));
             }
             NameEntryMsg::SetText(s) => {
                 self.text = s;

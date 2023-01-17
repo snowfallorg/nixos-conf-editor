@@ -1,7 +1,7 @@
 use ijson::{IString, IValue};
-use serde_json;
 use serde::{Deserialize, Serialize};
-use std::{self, fs, collections::HashMap, cmp::Ordering, error::Error};
+use serde_json;
+use std::{self, cmp::Ordering, collections::HashMap, error::Error, fs};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default, Clone)]
 pub struct OptionData {
@@ -18,7 +18,7 @@ pub struct OptionData {
 #[derive(Default, Debug, PartialEq)]
 pub struct AttrTree {
     pub attributes: HashMap<String, AttrTree>,
-    pub options: Vec<String>
+    pub options: Vec<String>,
 }
 
 pub fn read(file: &str) -> Result<(HashMap<String, OptionData>, AttrTree), Box<dyn Error>> {
@@ -31,11 +31,9 @@ pub fn read(file: &str) -> Result<(HashMap<String, OptionData>, AttrTree), Box<d
 
 pub fn attrloc(tree: &AttrTree, pos: Vec<String>) -> Option<&AttrTree> {
     match pos.len().cmp(&1) {
-        Ordering::Greater => {
-            match tree.attributes.get(&pos[0]) {
-                Some(x) => attrloc(x, pos[1..].to_vec()),
-                None => None,
-            }
+        Ordering::Greater => match tree.attributes.get(&pos[0]) {
+            Some(x) => attrloc(x, pos[1..].to_vec()),
+            None => None,
         },
         Ordering::Equal => tree.attributes.get(&pos[0]),
         Ordering::Less => Some(tree),
@@ -43,7 +41,10 @@ pub fn attrloc(tree: &AttrTree, pos: Vec<String>) -> Option<&AttrTree> {
 }
 
 fn buildtree(ops: Vec<&str>) -> Result<AttrTree, Box<dyn Error>> {
-    let split = ops.into_iter().map(|x| x.split('.').collect::<Vec<_>>()).collect::<Vec<_>>();
+    let split = ops
+        .into_iter()
+        .map(|x| x.split('.').collect::<Vec<_>>())
+        .collect::<Vec<_>>();
     let mut tree = AttrTree {
         attributes: HashMap::new(),
         options: vec![],
@@ -52,14 +53,21 @@ fn buildtree(ops: Vec<&str>) -> Result<AttrTree, Box<dyn Error>> {
         match attr.len().cmp(&1) {
             Ordering::Greater => {
                 if tree.attributes.get(attr[0]).is_none() {
-                    tree.attributes.insert(attr[0].to_string(), AttrTree { attributes: HashMap::new(), options: vec![] });
+                    tree.attributes.insert(
+                        attr[0].to_string(),
+                        AttrTree {
+                            attributes: HashMap::new(),
+                            options: vec![],
+                        },
+                    );
                 }
-                buildtree_child(tree.attributes.get_mut(attr[0]).unwrap(), attr[1..].to_vec())?;
-            },
-            Ordering::Equal => {
-                tree.options.push(attr[0].to_string())
-            },
-            Ordering::Less => {},
+                buildtree_child(
+                    tree.attributes.get_mut(attr[0]).unwrap(),
+                    attr[1..].to_vec(),
+                )?;
+            }
+            Ordering::Equal => tree.options.push(attr[0].to_string()),
+            Ordering::Less => {}
         }
     }
     Ok(tree)
@@ -69,14 +77,23 @@ fn buildtree_child(tree: &mut AttrTree, attr: Vec<&str>) -> Result<(), Box<dyn E
     match attr.len().cmp(&1) {
         Ordering::Greater => {
             if tree.attributes.get(attr[0]).is_none() {
-                tree.attributes.insert(attr[0].to_string(), AttrTree { attributes: HashMap::new(), options: vec![] });
+                tree.attributes.insert(
+                    attr[0].to_string(),
+                    AttrTree {
+                        attributes: HashMap::new(),
+                        options: vec![],
+                    },
+                );
             }
-            buildtree_child(tree.attributes.get_mut(attr[0]).unwrap(), attr[1..].to_vec())
-        },
+            buildtree_child(
+                tree.attributes.get_mut(attr[0]).unwrap(),
+                attr[1..].to_vec(),
+            )
+        }
         Ordering::Equal => {
             tree.options.push(attr[0].to_string());
             Ok(())
-        },
-        Ordering::Less => Ok(())
+        }
+        Ordering::Less => Ok(()),
     }
 }

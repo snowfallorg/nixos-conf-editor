@@ -1,13 +1,12 @@
 use super::window::{AppMsg, LoadValues};
-// use crate::parse::cache::checkcache;
 use crate::parse::config::parseconfig;
 use crate::parse::options::read;
 use crate::parse::preferences::editconfig;
+use log::*;
 use nix_data::config::configfile::NixDataConfig;
 use relm4::adw::prelude::*;
 use relm4::*;
 use std::path::Path;
-use log::*;
 
 pub struct WindowAsyncHandler;
 
@@ -34,7 +33,7 @@ impl Worker for WindowAsyncHandler {
                     Ok(x) => x,
                     Err(e) => {
                         error!("{}", e);
-                        sender.output(AppMsg::LoadError(
+                        let _ = sender.output(AppMsg::LoadError(
                             String::from("Could not load cache"),
                             String::from(
                                 "Try connecting to the internet or launching the application again",
@@ -48,7 +47,7 @@ impl Worker for WindowAsyncHandler {
                     Ok(x) => x,
                     Err(e) => {
                         error!("{}", e);
-                        sender.output(AppMsg::LoadError(
+                        let _ = sender.output(AppMsg::LoadError(
                             String::from("Could not load options"),
                             String::from("Try launching the application again"),
                         ));
@@ -60,14 +59,14 @@ impl Worker for WindowAsyncHandler {
                     Ok(x) => x,
                     Err(e) => {
                         error!("{}", e);
-                        sender.output(AppMsg::LoadError(
+                        let _ = sender.output(AppMsg::LoadError(
                             String::from("Error loading configuration file"),
                             format!("<tt>{}</tt> may be an invalid configuration file", path),
                         ));
                         return;
                     }
                 };
-                sender.output(AppMsg::InitialLoad(LoadValues { data, tree, conf }));
+                let _ = sender.output(AppMsg::InitialLoad(LoadValues { data, tree, conf }));
             }
             WindowAsyncHandlerMsg::GetConfigPath(cfg) => {
                 warn!("CFG: {:?}", cfg);
@@ -76,23 +75,23 @@ impl Worker for WindowAsyncHandler {
                         if Path::new(&systemconfig).exists() {
                             if let Some(flakepath) = &config.flake {
                                 if !Path::new(flakepath).exists() {
-                                    sender.output(AppMsg::Welcome);
+                                    let _ = sender.output(AppMsg::Welcome);
                                     return;
                                 }
                             }
-                            sender.output(AppMsg::SetConfig(config));
+                            let _ = sender.output(AppMsg::SetConfig(config));
                         } else {
-                            sender.output(AppMsg::Welcome);
+                            let _ = sender.output(AppMsg::Welcome);
                         }
                     } else {
-                        sender.output(AppMsg::Welcome);
+                        let _ = sender.output(AppMsg::Welcome);
                     }
                 } else {
-                    sender.output(AppMsg::Welcome);
+                    let _ = sender.output(AppMsg::Welcome);
                 }
             }
             WindowAsyncHandlerMsg::SetConfig(cfg) => {
-                match editconfig(cfg) {
+                let _ = match editconfig(cfg) {
                     Ok(_) => sender.output(AppMsg::TryLoad),
                     Err(_) => sender.output(AppMsg::LoadError(
                         String::from("Error loading configuration file"),
@@ -184,13 +183,15 @@ impl SimpleComponent for LoadErrorModel {
             }
             LoadErrorMsg::Retry => {
                 self.hidden = true;
-                sender.output(AppMsg::TryLoad)
+                let _ = sender.output(AppMsg::TryLoad);
             }
-            LoadErrorMsg::Close => sender.output(AppMsg::Close),
+            LoadErrorMsg::Close => {
+                let _ = sender.output(AppMsg::Close);
+            }
             LoadErrorMsg::Preferences => {
-                sender.output(AppMsg::ShowPrefMenuErr);
+                let _ = sender.output(AppMsg::ShowPrefMenuErr);
                 self.hidden = true;
-            },
+            }
         }
     }
 }

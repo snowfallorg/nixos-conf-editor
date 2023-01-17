@@ -1,4 +1,3 @@
-pub mod window;
 mod about;
 mod nameentry;
 mod optionpage;
@@ -11,4 +10,5 @@ mod searchfactory;
 mod searchpage;
 mod treefactory;
 mod welcome;
+pub mod window;
 mod windowloading;

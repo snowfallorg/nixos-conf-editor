@@ -1,5 +1,3 @@
-use std::convert::identity;
-
 use super::savechecking::*;
 use super::window::*;
 use crate::parse::options::OptionData;
@@ -9,6 +7,7 @@ use log::*;
 use pandoc;
 use relm4::*;
 use sourceview5::prelude::*;
+use std::convert::identity;
 
 #[derive(Debug)]
 pub enum OptPageMsg {
@@ -570,7 +569,7 @@ impl SimpleComponent for OptPageModel {
                     sender.input(OptPageMsg::DoneSaving(true, "true\n".to_string()));
                 } else {
                     self.set_saving(true);
-                    sender.output(AppMsg::SetBusy(true));
+                    let _ = sender.output(AppMsg::SetBusy(true));
                     self.async_handler.emit(SaveAsyncHandlerMsg::SaveCheck(
                         opt,
                         refopt,
@@ -585,7 +584,7 @@ impl SimpleComponent for OptPageModel {
                     if message.eq("true\n") {
                         //Save
                         self.set_conf(self.modifiedconf.clone());
-                        sender.output(AppMsg::EditOpt(
+                        let _ = sender.output(AppMsg::EditOpt(
                             self.opt.join("."),
                             self.modifiedconf.clone(),
                         ));
@@ -597,15 +596,15 @@ impl SimpleComponent for OptPageModel {
                             self.modifiedconf,
                             self.data.op_type.as_str()
                         );
-                        sender.output(AppMsg::SaveError(e));
+                        let _ = sender.output(AppMsg::SaveError(e));
                     }
                 } else {
                     //Error
-                    sender.output(AppMsg::SaveError(message));
+                    let _ = sender.output(AppMsg::SaveError(message));
                 }
 
                 self.set_saving(false);
-                sender.output(AppMsg::SetBusy(false));
+                let _ = sender.output(AppMsg::SetBusy(false));
             }
             OptPageMsg::SetScheme(scheme) => {
                 info!("OptPageMsg::SetScheme");

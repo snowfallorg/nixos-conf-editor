@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use super::window::*;
 use adw::prelude::*;
 use relm4::{factory::*, *};
+use std::collections::HashMap;
 
 pub struct SearchEntryModel {
     hidden: bool,
@@ -159,7 +158,7 @@ impl SimpleComponent for SearchEntryModel {
                                 }
                             }
                             if !existing.contains(&self.customopt[i]) {
-                                sender.output(AppMsg::AddNameAttr(
+                                let _ = sender.output(AppMsg::AddNameAttr(
                                     Some(self.customopt[..i].join(".")),
                                     self.customopt[i].clone(),
                                 ));
@@ -185,7 +184,7 @@ impl SimpleComponent for SearchEntryModel {
                                 0
                             };
                             n.insert(i, num);
-                            sender.output(AppMsg::AddStar(self.customopt[..i].join(".")));
+                            let _ = sender.output(AppMsg::AddStar(self.customopt[..i].join(".")));
                         }
                     }
                     for (k, v) in n {
@@ -193,7 +192,7 @@ impl SimpleComponent for SearchEntryModel {
                     }
                 }
                 data_guard.clear();
-                sender.output(AppMsg::OpenSearchOption(
+                let _ = sender.output(AppMsg::OpenSearchOption(
                     if let Some(x) = dest {
                         x
                     } else {
@@ -247,11 +246,7 @@ impl FactoryComponent for SearchEntryOption {
         }
     }
 
-    fn init_model(
-        value: Self::Init,
-        _index: &DynamicIndex,
-        _sender: FactoryComponentSender<Self>,
-    ) -> Self {
+    fn init_model(value: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
         let v = value
             .split('.')
             .map(|x| x.to_string())
@@ -305,11 +300,7 @@ impl FactoryComponent for SearchNameEntryOption {
         }
     }
 
-    fn init_model(
-        value: Self::Init,
-        _index: &DynamicIndex,
-        _sender: FactoryComponentSender<Self>,
-    ) -> Self {
+    fn init_model(value: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
         Self {
             value: value.0,
             index: value.1,

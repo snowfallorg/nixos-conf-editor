@@ -1,24 +1,22 @@
 use super::window::AppMsg;
+use crate::config::LIBEXECDIR;
 use adw::prelude::*;
+use gtk::{gio, glib};
 use relm4::*;
-use sourceview5::prelude::*;
-use std::convert::identity;
-use std::io::{BufRead, Write};
-use std::path::Path;
+use std::io::Write;
+use std::process::Command;
 use std::process::*;
-use std::{io::BufReader, process::Command};
+use vte::{TerminalExt, TerminalExtManual};
 
 #[tracker::track]
 pub struct RebuildModel {
     hidden: bool,
-    text: String,
     status: RebuildStatus,
     config: String,
     path: String,
     flake: Option<String>,
     scheme: Option<sourceview5::StyleScheme>,
-    #[tracker::no_eq]
-    async_handler: WorkerController<RebuildAsyncHandler>,
+    terminal: vte::Terminal,
 }
 
 #[derive(Debug)]
@@ -26,7 +24,7 @@ pub enum RebuildMsg {
     Rebuild(String, String, Option<String>),
     FinishSuccess,
     FinishError(Option<String>),
-    UpdateText(String),
+    WriteConfig(String, String, bool),
     KeepEditing,
     Reset,
     Save,
@@ -126,23 +124,17 @@ impl SimpleComponent for RebuildModel {
                     gtk::ScrolledWindow {
                         set_max_content_height: 500,
                         set_min_content_height: 100,
-                        #[name(outview)]
-                        sourceview5::View {
-                            set_editable: false,
-                            set_cursor_visible: false,
-                            set_monospace: true,
-                            set_top_margin: 5,
-                            set_bottom_margin: 5,
-                            set_left_margin: 5,
+                        #[local_ref]
+                        terminal -> vte::Terminal {
                             set_vexpand: true,
                             set_hexpand: true,
-                            set_vscroll_policy: gtk::ScrollablePolicy::Minimum,
-                            #[wrap(Some)]
-                            set_buffer: outbuf = &sourceview5::Buffer {
-                                #[track(model.changed(RebuildModel::scheme()))]
-                                set_style_scheme: model.scheme.as_ref(),
-                                #[track(model.changed(RebuildModel::text()))]
-                                set_text: &model.text,
+                            set_input_enabled: false,
+                            connect_child_exited[sender] => move |_term, status| {
+                                if status == 0 {
+                                    sender.input(RebuildMsg::FinishSuccess);
+                                } else {
+                                    sender.input(RebuildMsg::FinishError(None));
+                                }
                             }
                         }
                     }
@@ -201,39 +193,23 @@ impl SimpleComponent for RebuildModel {
         }
     }
 
-    fn post_view() {
-        let adj = scrollwindow.vadjustment();
-        if model.status == RebuildStatus::Building {
-            adj.set_upper(adj.upper() + 20.0);
-        }
-        adj.set_value(adj.upper());
-        if model.status != RebuildStatus::Building {
-            outview.scroll_to_mark(&outview.buffer().get_insert(), 0.0, true, 0.0, 0.0);
-            scrollwindow.hadjustment().set_value(0.0);
-        }
-    }
-
     fn init(
         parent_window: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let async_handler = RebuildAsyncHandler::builder()
-            .detach_worker(())
-            .forward(sender.input_sender(), identity);
-
         let model = RebuildModel {
             hidden: true,
-            text: String::new(),
             status: RebuildStatus::Building,
             config: String::new(),
             path: String::new(),
             flake: None,
             scheme: None,
-            async_handler,
+            terminal: vte::Terminal::new(),
             tracker: 0,
         };
 
+        let terminal = &model.terminal;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
@@ -244,34 +220,71 @@ impl SimpleComponent for RebuildModel {
         match msg {
             RebuildMsg::Rebuild(f, path, flake) => {
                 self.update_hidden(|x| *x = false);
-                self.update_text(|x| x.clear());
                 self.set_config(f.to_string());
                 self.set_path(path.to_string());
                 self.set_flake(flake.clone());
                 self.set_status(RebuildStatus::Building);
-                self.async_handler
-                    .emit(RebuildAsyncHandlerMsg::RunRebuild(f, path, flake));
-            }
-            RebuildMsg::UpdateText(s) => {
-                let newtext = if self.text.is_empty() {
-                    s
+                if let Some(flake) = flake {
+                    self.terminal.spawn_async(
+                        vte::PtyFlags::DEFAULT,
+                        Some("/"),
+                        &[
+                            "/usr/bin/env",
+                            "pkexec",
+                            &format!("{}/nce-helper", LIBEXECDIR),
+                            "write-rebuild",
+                            "--content",
+                            &f,
+                            "--path",
+                            &path,
+                            "--",
+                            "switch",
+                            "--flake",
+                            &flake,
+                        ],
+                        &[],
+                        glib::SpawnFlags::DEFAULT,
+                        || (),
+                        -1,
+                        gio::Cancellable::NONE,
+                        |_, _, _| (),
+                    );
                 } else {
-                    format!("{}\n{}", self.text, s)
-                };
-                self.set_text(newtext);
+                    self.terminal.spawn_async(
+                        vte::PtyFlags::DEFAULT,
+                        Some("/"),
+                        &[
+                            "/usr/bin/env",
+                            "pkexec",
+                            &format!("{}/nce-helper", LIBEXECDIR),
+                            "write-rebuild",
+                            "--content",
+                            &f,
+                            "--path",
+                            &path,
+                            "--",
+                            "switch",
+                            "-I",
+                            &format!("nixos-config={}", path),
+                        ],
+                        &[],
+                        glib::SpawnFlags::DEFAULT,
+                        || (),
+                        -1,
+                        gio::Cancellable::NONE,
+                        |_, _, _| (),
+                    );
+                }
             }
             RebuildMsg::FinishSuccess => {
                 self.set_status(RebuildStatus::Success);
             }
-            RebuildMsg::FinishError(msg) => {
-                if let Some(s) = msg {
-                    self.set_text(s)
-                }
+            RebuildMsg::FinishError(_msg) => {
                 self.update_hidden(|x| *x = false);
                 self.set_status(RebuildStatus::Error);
             }
             RebuildMsg::KeepEditing => {
-                self.async_handler.emit(RebuildAsyncHandlerMsg::WriteConfig(
+                sender.input(RebuildMsg::WriteConfig(
                     self.config.to_string(),
                     self.path.to_string(),
                     false,
@@ -279,144 +292,37 @@ impl SimpleComponent for RebuildModel {
                 sender.input(RebuildMsg::Close);
             }
             RebuildMsg::Reset => {
-                sender.output(AppMsg::ResetConfig);
+                let _ = sender.output(AppMsg::ResetConfig);
                 sender.input(RebuildMsg::Close);
             }
             RebuildMsg::Save => {
-                sender.output(AppMsg::SaveConfig);
+                let _ = sender.output(AppMsg::SaveConfig);
                 sender.input(RebuildMsg::Close);
             }
             RebuildMsg::Close => {
+                self.terminal.reset(true, true);
+                self.terminal.spawn_async(
+                    vte::PtyFlags::DEFAULT,
+                    Some("/"),
+                    &["/usr/bin/env", "clear"],
+                    &[],
+                    glib::SpawnFlags::DEFAULT,
+                    || (),
+                    -1,
+                    gio::Cancellable::NONE,
+                    |_, _, _| (),
+                );
                 self.update_hidden(|x| *x = true);
-                self.update_text(|x| x.clear());
             }
             RebuildMsg::SetScheme(scheme) => {
                 self.set_scheme(sourceview5::StyleSchemeManager::default().scheme(&scheme));
             }
             RebuildMsg::WriteConfigQuit(f, path) => {
-                self.async_handler
-                    .emit(RebuildAsyncHandlerMsg::WriteConfig(f, path, true));
+                sender.input(RebuildMsg::WriteConfig(f, path, true));
             }
-            RebuildMsg::Quit => {
-                sender.output(AppMsg::Close);
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum RebuildAsyncHandlerMsg {
-    RunRebuild(String, String, Option<String>),
-    WriteConfig(String, String, bool),
-}
-
-pub struct RebuildAsyncHandler;
-
-impl Worker for RebuildAsyncHandler {
-    type Init = ();
-    type Input = RebuildAsyncHandlerMsg;
-    type Output = RebuildMsg;
-
-    fn init(_params: Self::Init, _sender: relm4::ComponentSender<Self>) -> Self {
-        Self
-    }
-
-    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
-        match msg {
-            RebuildAsyncHandlerMsg::RunRebuild(f, path, flake) => {
-                let exe = match std::env::current_exe() {
-                    Ok(mut e) => {
-                        e.pop(); // root/bin
-                        e.pop(); // root/
-                        e.push("libexec"); // root/libexec
-                        e.push("nce-helper");
-                        let x = e.to_string_lossy().to_string();
-                        if Path::new(&x).is_file() {
-                            x
-                        } else {
-                            String::from("nce-helper")
-                        }
-                    }
-                    Err(_) => String::from("nce-helper"),
-                };
-
+            RebuildMsg::WriteConfig(f, path, quit) => {
                 let mut writecmd = Command::new("pkexec")
-                    .arg(&exe)
-                    .arg("config")
-                    .arg("--output")
-                    .arg(&path)
-                    .stdin(Stdio::piped())
-                    .spawn()
-                    .unwrap();
-                writecmd
-                    .stdin
-                    .as_mut()
-                    .ok_or("stdin not available")
-                    .unwrap()
-                    .write_all(f.as_bytes())
-                    .unwrap();
-                writecmd.wait().unwrap();
-
-                let mut cmd = if let Some(x) = flake {
-                    Command::new("pkexec")
-                        .arg(&exe)
-                        .arg("rebuild")
-                        .arg("--")
-                        .arg("switch")
-                        .arg("--flake")
-                        .arg(x)
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .spawn()
-                        .expect("Failed to run nixos-rebuild")
-                } else {
-                    Command::new("pkexec")
-                        .arg(&exe)
-                        .arg("rebuild")
-                        .arg("--")
-                        .arg("switch")
-                        .arg("-I")
-                        .arg(format!("nixos-config={}", path))
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .spawn()
-                        .expect("Failed to run nixos-rebuild")
-                };
-
-                let stderr = cmd.stderr.as_mut().unwrap();
-                let reader = BufReader::new(stderr);
-
-                reader
-                    .lines()
-                    .filter_map(|line| line.ok())
-                    .for_each(|line| {
-                        sender.output(RebuildMsg::UpdateText(line));
-                    });
-                if cmd.wait().as_ref().unwrap().success() {
-                    sender.output(RebuildMsg::FinishSuccess);
-                } else {
-                    sender.output(RebuildMsg::FinishError(None));
-                }
-            }
-            RebuildAsyncHandlerMsg::WriteConfig(f, path, quit) => {
-                let exe = match std::env::current_exe() {
-                    Ok(mut e) => {
-                        e.pop(); // root/bin
-                        e.pop(); // root/
-                        e.push("libexec"); // root/libexec
-                        e.push("nce-helper");
-                        let x = e.to_string_lossy().to_string();
-                        if Path::new(&x).is_file() {
-                            x
-                        } else {
-                            String::from("nce-helper")
-                        }
-                    }
-                    Err(_) => String::from("nce-helper"),
-                };
-
-                let mut writecmd = Command::new("pkexec")
-                    .arg(&exe)
+                    .arg(&format!("{}/nce-helper", LIBEXECDIR))
                     .arg("config")
                     .arg("--output")
                     .arg(path)
@@ -432,8 +338,11 @@ impl Worker for RebuildAsyncHandler {
                     .unwrap();
                 writecmd.wait().unwrap();
                 if quit {
-                    sender.output(RebuildMsg::Quit);
+                    sender.input(RebuildMsg::Quit);
                 }
+            }
+            RebuildMsg::Quit => {
+                let _ = sender.output(AppMsg::Close);
             }
         }
     }

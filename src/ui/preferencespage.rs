@@ -1,9 +1,9 @@
-use std::path::PathBuf;
 use super::window::AppMsg;
 use adw::prelude::*;
 use nix_data::config::configfile::NixDataConfig;
 use relm4::*;
 use relm4_components::open_dialog::*;
+use std::path::PathBuf;
 
 #[tracker::track]
 #[derive(Debug)]
@@ -241,8 +241,12 @@ impl SimpleComponent for PreferencesPageModel {
                 self.flakearg = arg;
             }
             PreferencesPageMsg::Close => {
-                if !self.configpath.eq(&self.origconfigpath) || !self.flake.eq(&self.origflake) || !self.flakearg.eq(&self.origflakearg) || self.error {
-                    sender.output(AppMsg::SetConfig(NixDataConfig {
+                if !self.configpath.eq(&self.origconfigpath)
+                    || !self.flake.eq(&self.origflake)
+                    || !self.flakearg.eq(&self.origflakearg)
+                    || self.error
+                {
+                    let _ = sender.output(AppMsg::SetConfig(NixDataConfig {
                         systemconfig: Some(self.configpath.to_string_lossy().to_string()),
                         flake: self.flake.as_ref().map(|x| x.to_string_lossy().to_string()),
                         flakearg: self.flakearg.clone(),

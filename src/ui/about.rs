@@ -1,9 +1,7 @@
+use super::window::AppMsg;
+use crate::config;
 use adw::prelude::*;
 use relm4::*;
-
-use crate::config;
-
-use super::window::AppMsg;
 
 #[derive(Debug)]
 pub struct AboutPageModel;
@@ -24,7 +22,7 @@ impl SimpleComponent for AboutPageModel {
             set_developer_name: "Victor Fuentes",
             set_version: config::VERSION,
             set_issue_url: "https://github.com/vlinkz/nixos-conf-editor/issues",
-            set_license_type: gtk::License::Gpl30Only,
+            set_license_type: gtk::License::Gpl30,
             set_website: "https://github.com/vlinkz/nixos-conf-editor",
             set_developers: &["Victor Fuentes https://github.com/vlinkz"],
         }

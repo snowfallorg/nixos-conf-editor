@@ -143,7 +143,7 @@ pub fn editconfig(
         let valarr = format!(
             "[\n{}\n  ]",
             arr.iter()
-                .filter(|(_, x)| x.trim().replace('\n', "").replace(' ', "") != "{}")
+                .filter(|(_, x)| x.trim().replace(['\n', ' '], "") != "{}")
                 .map(|(_, y)| format!(
                     "  {}",
                     y.replace(";\n  ", ";\n    ")

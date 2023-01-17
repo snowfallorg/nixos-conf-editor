@@ -9,7 +9,6 @@ pub fn getconfig() -> Option<NixDataConfig> {
     }
 }
 
-
 pub fn editconfig(config: NixDataConfig) -> Result<()> {
     nix_data::config::configfile::setuserconfig(config)?;
     Ok(())

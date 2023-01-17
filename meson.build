@@ -1,9 +1,9 @@
 project(
   'nixos-conf-editor',
   'rust',
-  version: '0.1.0',
+  version: '0.1.1',
   meson_version: '>= 0.59',
-  license: 'GPL-3.0-only',
+  license: 'GPL-3.0',
 )
 
 i18n = import('i18n')

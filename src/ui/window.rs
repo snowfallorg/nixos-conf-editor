@@ -41,7 +41,6 @@ use std::convert::identity;
 
 #[tracker::track]
 pub struct AppModel {
-    // application: adw::Application,
     mainwindow: adw::ApplicationWindow,
     pub position: Vec<String>,
     pub refposition: Vec<String>,
@@ -187,7 +186,7 @@ impl SimpleComponent for AppModel {
                         set_transition_type: gtk::StackTransitionType::Crossfade,
                         #[name(title)]
                         gtk::Label {
-                            set_label: "NixOS Configuration Editor",
+                            set_label: "Configuration Editor",
                         },
 
                         #[name(buttons)]
@@ -534,7 +533,10 @@ impl SimpleComponent for AppModel {
                         (
                             k.to_string(),
                             opconfigured(&self.conf, &v, attr),
-                            data.description.as_string().map(|x| x.to_string()).unwrap_or_default(),
+                            data.description
+                                .as_string()
+                                .map(|x| x.to_string())
+                                .unwrap_or_default(),
                         )
                     })
                     .collect::<Vec<_>>();
@@ -618,108 +620,65 @@ impl SimpleComponent for AppModel {
 
                 debug!("NEW REFPOSITON: {:?}", newref);
 
-                match attrloc(&self.tree, newref.to_vec()) {
-                    Some(x) => {
-                        let mut sortedoptions = x.options.clone();
-                        sortedoptions.sort();
-                        options_guard.clear();
-                        for op in sortedoptions {
-                            let configured = if pos.eq(&newref) {
-                                opconfigured(&self.conf, &pos, op.clone())
-                            } else {
-                                opconfigured2(
-                                    self.config.systemconfig.as_ref().unwrap(),
-                                    &pos,
-                                    &newref,
-                                    op.clone(),
-                                )
-                            };
-                            let modified = opconfigured(&self.editedopts, &pos, op.clone());
-                            if self.modifiedonly && !(configured || modified) {
-                                continue;
-                            }
-                            let mut o = pos.to_vec();
-                            let mut r = newref.to_vec();
-                            o.push(op.to_string());
-                            r.push(op.to_string());
-                            options_guard.push_back(OptPos {
-                                value: o,
-                                refvalue: r,
-                                configured,
-                                modified,
-                            });
+                if let Some(x) = attrloc(&self.tree, newref.to_vec()) {
+                    let mut sortedoptions = x.options.clone();
+                    sortedoptions.sort();
+                    options_guard.clear();
+                    for op in sortedoptions {
+                        let configured = if pos.eq(&newref) {
+                            opconfigured(&self.conf, &pos, op.clone())
+                        } else {
+                            opconfigured2(
+                                self.config.systemconfig.as_ref().unwrap(),
+                                &pos,
+                                &newref,
+                                op.clone(),
+                            )
+                        };
+                        let modified = opconfigured(&self.editedopts, &pos, op.clone());
+                        if self.modifiedonly && !(configured || modified) {
+                            continue;
                         }
-                        attributes_guard.clear();
-                        let mut attributes = Vec::new();
-                        let mut hasnameorstar = AddAttrOptions::None;
-                        debug!("ATTRS {:?}", x.attributes.keys());
-                        for attr in x.attributes.keys().collect::<Vec<_>>() {
-                            if attr == "<name>" {
-                                debug!("FOUND <name> ATTR");
-                                hasnameorstar = AddAttrOptions::Name;
-                                let v = getconfvals(&self.conf, &pos);
-                                for x in v {
+                        let mut o = pos.to_vec();
+                        let mut r = newref.to_vec();
+                        o.push(op.to_string());
+                        r.push(op.to_string());
+                        options_guard.push_back(OptPos {
+                            value: o,
+                            refvalue: r,
+                            configured,
+                            modified,
+                        });
+                    }
+                    attributes_guard.clear();
+                    let mut attributes = Vec::new();
+                    let mut hasnameorstar = AddAttrOptions::None;
+                    debug!("ATTRS {:?}", x.attributes.keys());
+                    for attr in x.attributes.keys().collect::<Vec<_>>() {
+                        if attr == "<name>" {
+                            debug!("FOUND <name> ATTR");
+                            hasnameorstar = AddAttrOptions::Name;
+                            let v = getconfvals(&self.conf, &pos);
+                            for x in v {
+                                let mut p = pos.clone();
+                                let mut r = newref.clone();
+                                p.push(x.clone());
+                                r.push(String::from("<name>"));
+                                attributes.push(AttrPos {
+                                    value: p,
+                                    refvalue: r,
+                                    configured: true,
+                                    modified: opconfigured(&self.editedopts, &pos, x),
+                                    replacefor: Some(String::from("<name>")),
+                                })
+                            }
+                            let addedvals = self.nameattrs.get(&pos.join("."));
+                            if let Some(x) = addedvals {
+                                for a in x {
                                     let mut p = pos.clone();
                                     let mut r = newref.clone();
-                                    p.push(x.clone());
+                                    p.push(a.clone());
                                     r.push(String::from("<name>"));
-                                    attributes.push(AttrPos {
-                                        value: p,
-                                        refvalue: r,
-                                        configured: true,
-                                        modified: opconfigured(&self.editedopts, &pos, x),
-                                        replacefor: Some(String::from("<name>")),
-                                    })
-                                }
-                                let addedvals = self.nameattrs.get(&pos.join("."));
-                                if let Some(x) = addedvals {
-                                    for a in x {
-                                        let mut p = pos.clone();
-                                        let mut r = newref.clone();
-                                        p.push(a.clone());
-                                        r.push(String::from("<name>"));
-                                        attributes.push(AttrPos {
-                                            value: p,
-                                            refvalue: r,
-                                            configured: false,
-                                            modified: opconfigured(
-                                                &self.editedopts,
-                                                &pos,
-                                                a.to_string(),
-                                            ),
-                                            replacefor: Some(String::from("<name>")),
-                                        })
-                                    }
-                                }
-                            } else if attr == "*" {
-                                debug!("FOUND * ATTR");
-                                hasnameorstar = AddAttrOptions::Star;
-                                let v =
-                                    getarrvals(self.config.systemconfig.as_ref().unwrap(), &pos);
-                                debug!("V: {:?}", v);
-                                for i in 0..v.len() {
-                                    let mut p = pos.clone();
-                                    let mut r = newref.clone();
-                                    p.push(i.to_string());
-                                    r.push(String::from("*"));
-                                    attributes.push(AttrPos {
-                                        value: p,
-                                        refvalue: r,
-                                        configured: true,
-                                        modified: opconfigured(
-                                            &self.editedopts,
-                                            &pos,
-                                            i.to_string(),
-                                        ),
-                                        replacefor: Some(String::from("*")),
-                                    })
-                                }
-                                let s = self.starattrs.get(&pos.join(".")).unwrap_or(&0);
-                                for i in v.len()..s + v.len() {
-                                    let mut p = pos.clone();
-                                    let mut r = newref.clone();
-                                    p.push(i.to_string());
-                                    r.push(String::from("*"));
                                     attributes.push(AttrPos {
                                         value: p,
                                         refvalue: r,
@@ -727,66 +686,97 @@ impl SimpleComponent for AppModel {
                                         modified: opconfigured(
                                             &self.editedopts,
                                             &pos,
-                                            i.to_string(),
+                                            a.to_string(),
                                         ),
-                                        replacefor: Some(String::from("*")),
+                                        replacefor: Some(String::from("<name>")),
                                     })
                                 }
-                            } else {
-                                let configured = if pos.eq(&newref) {
-                                    opconfigured(&self.conf, &pos, attr.to_string())
-                                } else {
-                                    opconfigured2(
-                                        self.config.systemconfig.as_ref().unwrap(),
-                                        &pos,
-                                        &newref,
-                                        attr.to_string(),
-                                    )
-                                };
-                                let modified =
-                                    opconfigured(&self.editedopts, &newref, attr.to_string());
-                                if self.modifiedonly && !(configured || modified) {
-                                    continue;
-                                }
-                                let mut p = pos.to_vec();
-                                let mut r = newref.to_vec();
-                                p.push(attr.to_string());
-                                r.push(attr.to_string());
+                            }
+                        } else if attr == "*" {
+                            debug!("FOUND * ATTR");
+                            hasnameorstar = AddAttrOptions::Star;
+                            let v = getarrvals(self.config.systemconfig.as_ref().unwrap(), &pos);
+                            debug!("V: {:?}", v);
+                            for i in 0..v.len() {
+                                let mut p = pos.clone();
+                                let mut r = newref.clone();
+                                p.push(i.to_string());
+                                r.push(String::from("*"));
                                 attributes.push(AttrPos {
                                     value: p,
                                     refvalue: r,
-                                    configured,
-                                    modified,
-                                    replacefor: None,
-                                });
+                                    configured: true,
+                                    modified: opconfigured(&self.editedopts, &pos, i.to_string()),
+                                    replacefor: Some(String::from("*")),
+                                })
                             }
-                        }
-                        if !pos.is_empty() {
-                            posbtn_guard.clear();
-                            let mut pref = vec![];
-                            let mut rref = vec![];
-                            for i in 0..pos.len() {
-                                pref.push(pos[i].clone());
-                                rref.push(newref[i].clone());
-                                posbtn_guard.push_back(AttrBtn {
-                                    value: pref.to_vec(),
-                                    refvalue: rref.to_vec(),
-                                    opt: false,
-                                });
+                            let s = self.starattrs.get(&pos.join(".")).unwrap_or(&0);
+                            for i in v.len()..s + v.len() {
+                                let mut p = pos.clone();
+                                let mut r = newref.clone();
+                                p.push(i.to_string());
+                                r.push(String::from("*"));
+                                attributes.push(AttrPos {
+                                    value: p,
+                                    refvalue: r,
+                                    configured: false,
+                                    modified: opconfigured(&self.editedopts, &pos, i.to_string()),
+                                    replacefor: Some(String::from("*")),
+                                })
                             }
+                        } else {
+                            let configured = if pos.eq(&newref) {
+                                opconfigured(&self.conf, &pos, attr.to_string())
+                            } else {
+                                opconfigured2(
+                                    self.config.systemconfig.as_ref().unwrap(),
+                                    &pos,
+                                    &newref,
+                                    attr.to_string(),
+                                )
+                            };
+                            let modified =
+                                opconfigured(&self.editedopts, &newref, attr.to_string());
+                            if self.modifiedonly && !(configured || modified) {
+                                continue;
+                            }
+                            let mut p = pos.to_vec();
+                            let mut r = newref.to_vec();
+                            p.push(attr.to_string());
+                            r.push(attr.to_string());
+                            attributes.push(AttrPos {
+                                value: p,
+                                refvalue: r,
+                                configured,
+                                modified,
+                                replacefor: None,
+                            });
                         }
-
-                        let mut x = attributes.to_vec();
-                        x.sort_by(|x, y| x.value.cmp(&y.value));
-                        for attr in x {
-                            attributes_guard.push_back(attr.clone());
-                        }
-                        debug!("Setting HNOS {:?}", hasnameorstar);
-                        self.nameorstar = hasnameorstar;
-                        self.position = pos;
-                        self.refposition = newref;
                     }
-                    None => {}
+                    if !pos.is_empty() {
+                        posbtn_guard.clear();
+                        let mut pref = vec![];
+                        let mut rref = vec![];
+                        for i in 0..pos.len() {
+                            pref.push(pos[i].clone());
+                            rref.push(newref[i].clone());
+                            posbtn_guard.push_back(AttrBtn {
+                                value: pref.to_vec(),
+                                refvalue: rref.to_vec(),
+                                opt: false,
+                            });
+                        }
+                    }
+
+                    let mut x = attributes.to_vec();
+                    x.sort_by(|x, y| x.value.cmp(&y.value));
+                    for attr in x {
+                        attributes_guard.push_back(attr.clone());
+                    }
+                    debug!("Setting HNOS {:?}", hasnameorstar);
+                    self.nameorstar = hasnameorstar;
+                    self.position = pos;
+                    self.refposition = newref;
                 }
                 if self.position.is_empty() {
                     self.header = HeaderBar::Title;
@@ -1032,7 +1022,13 @@ impl SimpleComponent for AppModel {
                 self.rebuild.emit(RebuildMsg::Rebuild(
                     conf,
                     self.config.systemconfig.as_ref().unwrap().to_string(),
-                    self.config.flake.clone().map(|x| if let Some(flakearg) = &self.config.flakearg { format!("{}#{}", x, flakearg) } else { x }),
+                    self.config.flake.clone().map(|x| {
+                        if let Some(flakearg) = &self.config.flakearg {
+                            format!("{}#{}", x, flakearg)
+                        } else {
+                            x
+                        }
+                    }),
                 ));
             }
             AppMsg::ResetConfig => {

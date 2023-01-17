@@ -87,11 +87,11 @@ impl SimpleComponent for QuitCheckModel {
             }
             QuitCheckMsg::Save => {
                 self.busy = true;
-                sender.output(AppMsg::SaveQuit);
+                let _ = sender.output(AppMsg::SaveQuit);
             }
             QuitCheckMsg::Rebuild => {
                 self.hidden = true;
-                sender.output(AppMsg::Rebuild);
+                let _ = sender.output(AppMsg::Rebuild);
             }
             QuitCheckMsg::Quit => {
                 relm4::main_application().quit();

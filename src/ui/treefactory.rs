@@ -51,11 +51,7 @@ impl FactoryComponent for AttrPos {
         }
     }
 
-    fn init_model(
-        parent: Self::Init,
-        _index: &DynamicIndex,
-        _sender: FactoryComponentSender<Self>,
-    ) -> Self {
+    fn init_model(parent: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
         Self {
             value: parent.value,
             refvalue: parent.refvalue,
@@ -109,11 +105,7 @@ impl FactoryComponent for OptPos {
         }
     }
 
-    fn init_model(
-        parent: Self::Init,
-        _index: &DynamicIndex,
-        _sender: FactoryComponentSender<Self>,
-    ) -> Self {
+    fn init_model(parent: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
         Self {
             value: parent.value,
             refvalue: parent.refvalue,
@@ -160,11 +152,7 @@ impl FactoryComponent for AttrBtn {
         }
     }
 
-    fn init_model(
-        parent: Self::Init,
-        _index: &DynamicIndex,
-        _sender: FactoryComponentSender<Self>,
-    ) -> Self {
+    fn init_model(parent: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
         Self {
             value: parent.value,
             refvalue: parent.refvalue,

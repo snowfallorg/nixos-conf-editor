@@ -1,12 +1,10 @@
-use std::path::{PathBuf, Path};
-
+use super::window::AppMsg;
 use adw::prelude::*;
 use log::info;
 use nix_data::config::configfile::NixDataConfig;
 use relm4::*;
 use relm4_components::open_dialog::*;
-
-use super::window::AppMsg;
+use std::path::{Path, PathBuf};
 
 pub struct WelcomeModel {
     hidden: bool,
@@ -168,15 +166,13 @@ impl SimpleComponent for WelcomeModel {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-
         let conf_dialog = OpenDialog::builder()
             .transient_for_native(root)
             .launch(OpenDialogSettings::default())
             .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => WelcomeMsg::UpdateConfPath(path),
                 OpenDialogResponse::Cancel => WelcomeMsg::Ignore,
-        });
-
+            });
 
         let flake_dialog = OpenDialog::builder()
             .transient_for_native(root)
@@ -184,13 +180,15 @@ impl SimpleComponent for WelcomeModel {
             .forward(sender.input_sender(), |response| match response {
                 OpenDialogResponse::Accept(path) => WelcomeMsg::UpdateFlakePath(path),
                 OpenDialogResponse::Cancel => WelcomeMsg::Ignore,
-        });
-
-
+            });
 
         let model = WelcomeModel {
             hidden: true,
-            confpath: if Path::new("/etc/nixos/configuration.nix").exists() { Some(PathBuf::from("/etc/nixos/configuration.nix")) } else { None }, // parent_window.configpath.to_string(),
+            confpath: if Path::new("/etc/nixos/configuration.nix").exists() {
+                Some(PathBuf::from("/etc/nixos/configuration.nix"))
+            } else {
+                None
+            }, // parent_window.configpath.to_string(),
             flakepath: None,
             conf_dialog,
             flake_dialog,
@@ -210,10 +208,13 @@ impl SimpleComponent for WelcomeModel {
             }
             WelcomeMsg::Close => {
                 if let Some(confpath) = &self.confpath {
-                    sender.output(AppMsg::SetConfig(NixDataConfig {
+                    let _ = sender.output(AppMsg::SetConfig(NixDataConfig {
                         systemconfig: Some(confpath.to_string_lossy().to_string()),
-                        flake: self.flakepath.as_ref().map(|x| x.to_string_lossy().to_string()),
-                        flakearg: None
+                        flake: self
+                            .flakepath
+                            .as_ref()
+                            .map(|x| x.to_string_lossy().to_string()),
+                        flakearg: None,
                     }));
                     self.hidden = true;
                 }
@@ -230,12 +231,8 @@ impl SimpleComponent for WelcomeModel {
                 info!("Clear flake path");
                 self.flakepath = None;
             }
-            WelcomeMsg::OpenConf => {
-                self.conf_dialog.emit(OpenDialogMsg::Open)
-            }
-            WelcomeMsg::OpenFlake => {
-                self.flake_dialog.emit(OpenDialogMsg::Open)
-            }
+            WelcomeMsg::OpenConf => self.conf_dialog.emit(OpenDialogMsg::Open),
+            WelcomeMsg::OpenFlake => self.flake_dialog.emit(OpenDialogMsg::Open),
             WelcomeMsg::Ignore => {}
         }
     }

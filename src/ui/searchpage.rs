@@ -1,10 +1,8 @@
-use std::{cmp::Ordering, collections::HashMap};
-
-use crate::parse::config::opconfigured;
-
 use super::{searchfactory::SearchOption, window::*};
+use crate::parse::config::opconfigured;
 use adw::prelude::*;
 use relm4::{factory::*, *};
+use std::{cmp::Ordering, collections::HashMap};
 
 #[derive(Debug)]
 pub enum SearchPageMsg {
@@ -147,7 +145,7 @@ impl SimpleComponent for SearchPageModel {
                                 .map(|s| s.to_string())
                                 .collect::<Vec<String>>(),
                             configured,
-                            modified
+                            modified,
                         });
                     }
                     if oplst_guard.len() >= 1000 {
@@ -157,9 +155,9 @@ impl SimpleComponent for SearchPageModel {
             }
             SearchPageMsg::OpenOption(opt, refpos) => {
                 if opt.contains(&String::from("*")) || opt.contains(&String::from("<name>")) {
-                    sender.output(AppMsg::ShowSearchPageEntry(opt));
+                    let _ = sender.output(AppMsg::ShowSearchPageEntry(opt));
                 } else {
-                    sender.output(AppMsg::OpenOption(
+                    let _ = sender.output(AppMsg::OpenOption(
                         opt.clone(),
                         if let Some(x) = refpos { x } else { opt },
                     ));
@@ -171,7 +169,7 @@ impl SimpleComponent for SearchPageModel {
             SearchPageMsg::SetModifiedOnly(modified, search) => {
                 self.modifiedonly = modified;
                 if search {
-                    sender.output(AppMsg::ShowSearchPage(self.query.clone()));
+                    let _ = sender.output(AppMsg::ShowSearchPage(self.query.clone()));
                 }
             }
         }

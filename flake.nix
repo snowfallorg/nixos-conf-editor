@@ -30,14 +30,12 @@
 
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
+            cairo
             cargo
             clippy
             desktop-file-utils
-            rust-analyzer
-            rustc
-            rustfmt
-            cairo
             gdk-pixbuf
+            gettext
             gobject-introspection
             graphene
             gtk4
@@ -50,6 +48,10 @@
             pango
             pkg-config
             polkit
+            rust-analyzer
+            rustc
+            rustfmt
+            vte-gtk4
             wrapGAppsHook4
           ];
           RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";

@@ -3,14 +3,14 @@
 }:
 pkgs.stdenv.mkDerivation rec {
   pname = "nixos-conf-editor";
-  version = "0.1.0";
+  version = "0.1.1";
 
   src = [ ./. ];
 
   cargoDeps = pkgs.rustPlatform.fetchCargoTarball {
     inherit src;
     name = "${pname}-${version}";
-    hash = "sha256-2lKXJBOvrptbarnJ7qaZZclbt9EXBaZ3BxpK7zAr/ag=";
+    hash = "sha256-47Mw1dvsKw83qJKMA+HWDkzyO7Q4x2IAUOQgTlo8Ylw=";
   };
 
   nativeBuildInputs = with pkgs; [
@@ -37,7 +37,7 @@ pkgs.stdenv.mkDerivation rec {
     gtksourceview5
     libadwaita
     openssl
-    wayland
+    vte-gtk4
   ];
 
   postInstall = ''

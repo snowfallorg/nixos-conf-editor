@@ -4,7 +4,7 @@ use adw::prelude::*;
 use log::{debug, info};
 use relm4::*;
 use sourceview5::prelude::*;
-use std::{process::Command, path::Path};
+use std::{path::Path, process::Command};
 
 pub struct SaveAsyncHandler;
 
@@ -57,35 +57,35 @@ impl Worker for SaveAsyncHandler {
                     }
                     format!("{}.type.check", s)
                 };
-                let output = if Path::new("/nix/var/nix/profiles/per-user/root/channels/nixos").exists() {
-                    Command::new("nix-instantiate")
-                    .arg("--eval")
-                    .arg("--expr")
-                    .arg(format!(
-                        "with import <nixpkgs/nixos> {{}}; {} ({})",
-                        checkcmd, conf
-                    ))
-                    .output()
-                } else {
-                    match Command::new("nix")
-                        .arg("eval")
-                        .arg("nixpkgs#path")
-                        .output()
-                    {
-                        Ok(nixpath) => {
-                            let nixospath = format!("{}/nixos", String::from_utf8_lossy(&nixpath.stdout).trim());
-                            Command::new("nix-instantiate")
-                                .arg("--eval")
-                                .arg("--expr")
-                                .arg(format!(
-                                    "with import {} {{}}; {} ({})",
-                                    nixospath, checkcmd, conf
-                                ))
-                                .output()
+                let output =
+                    if Path::new("/nix/var/nix/profiles/per-user/root/channels/nixos").exists() {
+                        Command::new("nix-instantiate")
+                            .arg("--eval")
+                            .arg("--expr")
+                            .arg(format!(
+                                "with import <nixpkgs/nixos> {{}}; {} ({})",
+                                checkcmd, conf
+                            ))
+                            .output()
+                    } else {
+                        match Command::new("nix").arg("eval").arg("nixpkgs#path").output() {
+                            Ok(nixpath) => {
+                                let nixospath = format!(
+                                    "{}/nixos",
+                                    String::from_utf8_lossy(&nixpath.stdout).trim()
+                                );
+                                Command::new("nix-instantiate")
+                                    .arg("--eval")
+                                    .arg("--expr")
+                                    .arg(format!(
+                                        "with import {} {{}}; {} ({})",
+                                        nixospath, checkcmd, conf
+                                    ))
+                                    .output()
+                            }
+                            Err(e) => Err(e),
                         }
-                        Err(e) => Err(e)
-                    }
-                };
+                    };
                 let (b, s) = match output {
                     Ok(output) => {
                         if output.status.success() {
@@ -98,7 +98,7 @@ impl Worker for SaveAsyncHandler {
                     }
                     Err(e) => (false, e.to_string()),
                 };
-                sender.output(OptPageMsg::DoneSaving(b, s));
+                let _ = sender.output(OptPageMsg::DoneSaving(b, s));
             }
         }
     }
@@ -214,11 +214,11 @@ impl SimpleComponent for SaveErrorModel {
             }
             SaveErrorMsg::SaveError => {
                 self.hidden = true;
-                sender.output(AppMsg::SaveWithError);
+                let _ = sender.output(AppMsg::SaveWithError);
             }
             SaveErrorMsg::Reset => {
                 self.hidden = true;
-                sender.output(AppMsg::SaveErrorReset);
+                let _ = sender.output(AppMsg::SaveErrorReset);
             }
             SaveErrorMsg::Cancel => self.hidden = true,
             SaveErrorMsg::SetScheme(scheme) => {
