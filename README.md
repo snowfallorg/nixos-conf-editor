@@ -27,8 +27,8 @@ let
   nixos-conf-editor = (import (pkgs.fetchFromGitHub {
     owner = "vlinkz";
     repo = "nixos-conf-editor";
-    rev = "0.0.6";
-    sha256 = "sha256-wJMUY4OCntFfR1BkTsia5tdNmaF5MBB3/n208Q/MPGA=";
+    rev = "0.1.1";
+    sha256 = "sha256-TeDpfaIRoDg01FIP8JZIS7RsGok/Z24Y3Kf+PuKt6K4=";
   })) {};
 in
 ```
