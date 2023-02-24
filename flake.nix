@@ -10,22 +10,14 @@
         pkgs = import nixpkgs {
           inherit system;
         };
-        name = "nixos-conf-editor";
       in
-      rec
       {
-        packages.${name} = pkgs.callPackage ./default.nix { };
-
-        # `nix build`
-        defaultPackage = packages.${name}; # legacy
-        packages.default = packages.${name};
-
-        # `nix run`
-        apps.${name} = utils.lib.mkApp {
-          inherit name;
-          drv = packages.${name};
+        packages = let
+          nixos-conf-editor = pkgs.callPackage ./default.nix {};
+        in {
+          inherit nixos-conf-editor;
+          default = nixos-conf-editor;
         };
-        defaultApp = apps.${name};
 
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
