@@ -13,7 +13,7 @@
       in
       {
         packages = let
-          nixos-conf-editor = pkgs.callPackages ./default.nix {};
+          nixos-conf-editor = pkgs.callPackage ./default.nix {};
         in {
           inherit nixos-conf-editor;
           default = nixos-conf-editor;
