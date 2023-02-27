@@ -88,13 +88,23 @@ impl SimpleComponent for OptPageModel {
                             add_css_class: "body",
                             #[track(model.changed(OptPageModel::data()))]
                             set_markup: {
-                                let x = format!("<article xmlns=\"http://docbook.org/ns/docbook\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"5.0\" xml:lang=\"en\"><para>\n{}\n</para></article>",
-                                    model.data.description.as_string().map(|x| x.to_string()).unwrap_or_default().trim());
                                 let mut pandoc = pandoc::new();
-                                pandoc.set_input(pandoc::InputKind::Pipe(x));
-                                pandoc.set_output(pandoc::OutputKind::Pipe);
-                                pandoc.set_input_format(pandoc::InputFormat::DocBook, vec![]);
-                                pandoc.set_output_format(pandoc::OutputFormat::Html, vec![]);
+
+                                if let Some(description) = model.data.description.as_object().and_then(|x| x.get("text")).and_then(|x| x.as_string()).map(|x| x.to_string()) {
+                                    let x = description.trim();
+                                    pandoc.set_input(pandoc::InputKind::Pipe(x.replace("{option}", "")));
+                                    pandoc.set_output(pandoc::OutputKind::Pipe);
+                                    pandoc.set_input_format(pandoc::InputFormat::Markdown, vec![]);
+                                    pandoc.set_output_format(pandoc::OutputFormat::Html, vec![]);
+                                } else {
+                                    let x = format!("<article xmlns=\"http://docbook.org/ns/docbook\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"5.0\" xml:lang=\"en\"><para>\n{}\n</para></article>",
+                                        model.data.description.as_string().map(|x| x.to_string()).unwrap_or_default().trim());
+                                    pandoc.set_input(pandoc::InputKind::Pipe(x.replace("{option}", "")));
+                                    pandoc.set_output(pandoc::OutputKind::Pipe);
+                                    pandoc.set_input_format(pandoc::InputFormat::DocBook, vec![]);
+                                    pandoc.set_output_format(pandoc::OutputFormat::Html, vec![]);
+                                }
+
                                 let out = pandoc.execute().unwrap();
                                 let y = match out {
                                     pandoc::PandocOutput::ToBuffer(s) => s,
