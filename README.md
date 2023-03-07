@@ -21,15 +21,31 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 
 Head of `configuration.nix`
 
+if you are on unstable channel or any version after 22.11:
 ```nix
 { config, pkgs, lib, ... }:
 let
-  nixos-conf-editor = (import (pkgs.fetchFromGitHub {
+  nixos-conf-editor = import (pkgs.fetchFromGitHub {
     owner = "vlinkz";
     repo = "nixos-conf-editor";
     rev = "0.1.1";
     sha256 = "sha256-TeDpfaIRoDg01FIP8JZIS7RsGok/Z24Y3Kf+PuKt6K4=";
-  })) {};
+  }) {};
+in
+```
+if you are on 22.11:
+```nix
+{ config, pkgs, lib, ... }:
+let
+  unstable = import (builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz";
+  }) {config = config.nixpkgs.config;};
+  nixos-conf-editor = import (pkgs.fetchFromGitHub {
+    owner = "vlinkz";
+    repo = "nixos-conf-editor";
+    rev = "0.1.1";
+    sha256 = "sha256-TeDpfaIRoDg01FIP8JZIS7RsGok/Z24Y3Kf+PuKt6K4=";
+  }) {pkgs = unstable;};
 in
 ```
 Packages:
