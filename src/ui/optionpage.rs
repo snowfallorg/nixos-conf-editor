@@ -4,7 +4,7 @@ use crate::parse::options::OptionData;
 use adw::prelude::*;
 use html2pango;
 use log::*;
-use pandoc;
+use pandoc::{self, MarkdownExtension};
 use relm4::*;
 use sourceview5::prelude::*;
 use std::convert::identity;
@@ -90,20 +90,16 @@ impl SimpleComponent for OptPageModel {
                             set_markup: {
                                 let mut pandoc = pandoc::new();
 
-                                if let Some(description) = model.data.description.as_object().and_then(|x| x.get("text")).and_then(|x| x.as_string()).map(|x| x.to_string()) {
-                                    let x = description.trim();
-                                    pandoc.set_input(pandoc::InputKind::Pipe(x.replace("{option}", "")));
-                                    pandoc.set_output(pandoc::OutputKind::Pipe);
-                                    pandoc.set_input_format(pandoc::InputFormat::Markdown, vec![]);
-                                    pandoc.set_output_format(pandoc::OutputFormat::Html, vec![]);
+                                let x = if let Some(description) = model.data.description.as_object().and_then(|x| x.get("text")).and_then(|x| x.as_string()).map(|x| x.to_string()) {
+                                    description.trim().to_string()
                                 } else {
-                                    let x = format!("<article xmlns=\"http://docbook.org/ns/docbook\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"5.0\" xml:lang=\"en\"><para>\n{}\n</para></article>",
-                                        model.data.description.as_string().map(|x| x.to_string()).unwrap_or_default().trim());
-                                    pandoc.set_input(pandoc::InputKind::Pipe(x.replace("{option}", "")));
-                                    pandoc.set_output(pandoc::OutputKind::Pipe);
-                                    pandoc.set_input_format(pandoc::InputFormat::DocBook, vec![]);
-                                    pandoc.set_output_format(pandoc::OutputFormat::Html, vec![]);
-                                }
+                                    model.data.description.as_string().map(|x| x.to_string()).unwrap_or_default().trim().to_string()
+                                };
+
+                                pandoc.set_input(pandoc::InputKind::Pipe(x.replace("{option}", "")));
+                                pandoc.set_output(pandoc::OutputKind::Pipe);
+                                pandoc.set_input_format(pandoc::InputFormat::Markdown, vec![MarkdownExtension::ListsWithoutPrecedingBlankline]);
+                                pandoc.set_output_format(pandoc::OutputFormat::Html, vec![]);
 
                                 let out = pandoc.execute().unwrap();
                                 let y = match out {
