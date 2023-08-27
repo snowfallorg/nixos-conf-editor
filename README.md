@@ -59,6 +59,11 @@ with pkgs; [
 ```
 For any other method of installation, when rebuilding you will be prompted to authenticate twice in a row
 
+## 'nix profile' installation
+```bash
+nix profile install github:vlinkz/nixos-conf-editor
+```
+
 ## 'nix-env' Installation
 
 ```bash
