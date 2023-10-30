@@ -15,6 +15,7 @@ pub struct PreferencesPageModel {
     origflake: Option<PathBuf>,
     flakearg: Option<String>,
     origflakearg: Option<String>,
+    generations: Option<u32>,
     #[tracker::no_eq]
     open_dialog: Controller<OpenDialog>,
     #[tracker::no_eq]
@@ -144,7 +145,7 @@ impl SimpleComponent for PreferencesPageModel {
                     add = &adw::EntryRow {
                         #[watch]
                         set_visible: model.flake.is_some(),
-                        set_title: "Flake arguments (--flake path/to/flake.nix#<THIS ENTRY>)",
+                        set_title: "Flake arguments (--flake path/to/flake.nix#&lt;THIS ENTRY&gt;)",
                         connect_changed[sender] => move |x| {
                             sender.input(PreferencesPageMsg::SetFlakeArg({
                                 let text = x.text().to_string();
@@ -191,6 +192,7 @@ impl SimpleComponent for PreferencesPageModel {
             origflake: None,
             flakearg: None,
             origflakearg: None,
+            generations: None,
             open_dialog,
             flake_file_dialog,
             error: false,
@@ -214,6 +216,7 @@ impl SimpleComponent for PreferencesPageModel {
                 self.origflake = self.flake.clone();
                 self.set_flakearg(config.flakearg);
                 self.origflakearg = self.flakearg.clone();
+                self.generations = config.generations;
                 self.prefwindow.show();
                 self.error = false;
             }
@@ -250,6 +253,7 @@ impl SimpleComponent for PreferencesPageModel {
                         systemconfig: Some(self.configpath.to_string_lossy().to_string()),
                         flake: self.flake.as_ref().map(|x| x.to_string_lossy().to_string()),
                         flakearg: self.flakearg.clone(),
+                        generations: self.generations,
                     }));
                 }
                 self.prefwindow.hide();

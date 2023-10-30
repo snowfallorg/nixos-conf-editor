@@ -17,6 +17,24 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 
 </div>
 
+## NixOS Flakes Installation
+`flake.nix`
+```nix
+{
+  inputs = {
+    # other inputs
+    nix-software-center.url = "github:vlinkz/nixos-conf-editor";
+    # rest of flake.nix
+```
+
+`configuration.nix`
+```nix
+environment.systemPackages = with pkgs; [
+    inputs.nix-software-center.packages.${system}.nix-software-center
+    # rest of your packages
+];
+```
+
 ## NixOS Installation
 
 Head of `configuration.nix`
@@ -28,24 +46,9 @@ let
   nixos-conf-editor = import (pkgs.fetchFromGitHub {
     owner = "vlinkz";
     repo = "nixos-conf-editor";
-    rev = "0.1.1";
-    sha256 = "sha256-TeDpfaIRoDg01FIP8JZIS7RsGok/Z24Y3Kf+PuKt6K4=";
+    rev = "0.1.2";
+    sha256 = "";
   }) {};
-in
-```
-if you are on 22.11:
-```nix
-{ config, pkgs, lib, ... }:
-let
-  unstable = import (builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz";
-  }) {config = config.nixpkgs.config;};
-  nixos-conf-editor = import (pkgs.fetchFromGitHub {
-    owner = "vlinkz";
-    repo = "nixos-conf-editor";
-    rev = "0.1.1";
-    sha256 = "sha256-TeDpfaIRoDg01FIP8JZIS7RsGok/Z24Y3Kf+PuKt6K4=";
-  }) {pkgs = unstable;};
 in
 ```
 Packages:

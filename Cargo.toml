@@ -1,12 +1,12 @@
 [package]
 name = "nixos-conf-editor"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 default-run = "nixos-conf-editor"
 
 [dependencies]
-relm4 = { version = "0.5.0-rc.1", features = ["libadwaita"]  }
-relm4-components = { package = "relm4-components", version = "0.5.0-rc.1"}
+relm4 = { version = "0.5.1", features = ["libadwaita"]  }
+relm4-components = { package = "relm4-components", version = "0.5.1"}
 adw = { package = "libadwaita", version = "0.2", features = ["v1_2", "gtk_v4_6"] }
 gtk = { package = "gtk4", version = "0.5", features = ["v4_6"] }
 sourceview5 = { version = "0.5", features = ["v5_4"] }
@@ -18,8 +18,8 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 ijson = "0.1"
 
-nix-editor = "0.3.0-beta.1"
-nix-data = { git = "https://github.com/snowflakelinux/nix-data" }
+nix-editor = "0.3.0"
+nix-data = "0.0.3"
 
 anyhow = "1.0"
 

@@ -215,6 +215,7 @@ impl SimpleComponent for WelcomeModel {
                             .as_ref()
                             .map(|x| x.to_string_lossy().to_string()),
                         flakearg: None,
+                        generations: None,
                     }));
                     self.hidden = true;
                 }

@@ -1,51 +1,17 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    snowfall-lib = {
+      url = "github:snowfallorg/lib";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz";
   };
 
-  outputs = { self, nixpkgs, utils }:
-    utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-        };
-      in
-      {
-        packages = let
-          nixos-conf-editor = pkgs.callPackage ./default.nix {};
-        in {
-          inherit nixos-conf-editor;
-          default = nixos-conf-editor;
-        };
-
-        devShell = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            cairo
-            cargo
-            clippy
-            desktop-file-utils
-            gdk-pixbuf
-            gettext
-            gobject-introspection
-            graphene
-            gtk4
-            gtksourceview5
-            libadwaita
-            meson
-            ninja
-            openssl
-            pandoc
-            pango
-            pkg-config
-            polkit
-            rust-analyzer
-            rustc
-            rustfmt
-            vte-gtk4
-            wrapGAppsHook4
-          ];
-          RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
-        };
-      });
+  outputs = inputs:
+    inputs.snowfall-lib.mkFlake {
+      inherit inputs;
+      alias.packages.default = "nixos-conf-editor";
+      src = ./.;
+    };
 }

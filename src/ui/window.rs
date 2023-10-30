@@ -226,7 +226,7 @@ impl SimpleComponent for AppModel {
                         },
                     },
                     pack_end: menubtn = &gtk::MenuButton {
-                        set_icon_name: "view-more-symbolic",
+                        set_icon_name: "open-menu-symbolic",
                         set_menu_model: Some(&main_menu),
                     },
                     pack_end = &gtk::ToggleButton {
@@ -437,6 +437,7 @@ impl SimpleComponent for AppModel {
                     systemconfig: Some(String::from("/etc/nixos/configuration.nix")),
                     flake: None,
                     flakearg: None,
+                    generations: None,
                 }
             },
             modifiedonly: false,
