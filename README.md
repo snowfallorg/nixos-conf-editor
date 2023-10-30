@@ -47,7 +47,7 @@ let
     owner = "vlinkz";
     repo = "nixos-conf-editor";
     rev = "0.1.2";
-    sha256 = "";
+    sha256 = "sha256-/ktLbmF1pU3vFHeGooDYswJipNE2YINm0WpF9Wd1gw8=";
   }) {};
 in
 ```
