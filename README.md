@@ -23,14 +23,14 @@ A simple NixOS configuration editor application built with [libadwaita](https://
 {
   inputs = {
     # other inputs
-    nix-software-center.url = "github:vlinkz/nixos-conf-editor";
+    nixos-conf-editor.url = "github:snowfallorg/nixos-conf-editor";
     # rest of flake.nix
 ```
 
 `configuration.nix`
 ```nix
 environment.systemPackages = with pkgs; [
-    inputs.nix-software-center.packages.${system}.nix-software-center
+    inputs.nixos-conf-editor.packages.${system}.nixos-conf-editor
     # rest of your packages
 ];
 ```
@@ -44,7 +44,7 @@ if you are on unstable channel or any version after 22.11:
 { config, pkgs, lib, ... }:
 let
   nixos-conf-editor = import (pkgs.fetchFromGitHub {
-    owner = "vlinkz";
+    owner = "snowfallorg";
     repo = "nixos-conf-editor";
     rev = "0.1.2";
     sha256 = "sha256-/ktLbmF1pU3vFHeGooDYswJipNE2YINm0WpF9Wd1gw8=";
@@ -64,24 +64,24 @@ For any other method of installation, when rebuilding you will be prompted to au
 
 ## 'nix profile' installation
 ```bash
-nix profile install github:vlinkz/nixos-conf-editor
+nix profile install github:snowfallorg/nixos-conf-editor
 ```
 
 ## 'nix-env' Installation
 
 ```bash
-git clone https://github.com/vlinkz/nixos-conf-editor
+git clone https://github.com/snowfallorg/nixos-conf-editor
 nix-env -f nixos-conf-editor -i nixos-conf-editor 
 ```
 
 ## Single run on an flakes enabled system:
 ```bash
-nix run github:vlinkz/nixos-conf-editor
+nix run github:snowfallorg/nixos-conf-editor
 ```
 
 ## Single run on non-flakes enabled system:
 ```bash
-nix --extra-experimental-features "nix-command flakes" run github:vlinkz/nixos-conf-editor
+nix --extra-experimental-features "nix-command flakes" run github:snowfallorg/nixos-conf-editor
 ```
 
 ## Debugging
