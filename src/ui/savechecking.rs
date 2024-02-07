@@ -71,14 +71,14 @@ impl Worker for SaveAsyncHandler {
                         match Command::new("nix").arg("eval").arg("nixpkgs#path").output() {
                             Ok(nixpath) => {
                                 let nixospath = format!(
-                                    "{}/nixos",
+                                    "{}/nixos/lib/eval-config.nix",
                                     String::from_utf8_lossy(&nixpath.stdout).trim()
                                 );
                                 Command::new("nix-instantiate")
                                     .arg("--eval")
                                     .arg("--expr")
                                     .arg(format!(
-                                        "with import {} {{}}; {} ({})",
+                                        "with import {} {{ modules = []; }}; {} ({})",
                                         nixospath, checkcmd, conf
                                     ))
                                     .output()
