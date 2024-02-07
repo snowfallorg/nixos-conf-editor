@@ -26,7 +26,7 @@
 }:
 
 mkShell {
-  nativeBuildInputs = [
+  buildInputs = [
     cairo
     cargo
     clippy
