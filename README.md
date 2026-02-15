@@ -56,7 +56,7 @@ Packages:
 ```nix
 environment.systemPackages =
 with pkgs; [
-  nixos-conf-editor.packages.${builtins.currentSystem}.nixos-conf-editor
+  nixos-conf-editor.packages.${stdenv.hostPlatform.system}.nixos-conf-editor
   # rest of your packages
 ];
 ```
