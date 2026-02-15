@@ -1,28 +1,29 @@
-{ stdenv
-, lib
-, appstream-glib
-, cargo
-, desktop-file-utils
-, gdk-pixbuf
-, gettext
-, git
-, glib
-, gnome
-, gtk4
-, gtksourceview5
-, libadwaita
-, meson
-, ninja
-, openssl
-, pandoc
-, pkg-config
-, polkit
-, rustc
-, rustPlatform
-, vte-gtk4
-, wrapGAppsHook4
+{
+  stdenv,
+  lib,
+  appstream-glib,
+  cargo,
+  desktop-file-utils,
+  gdk-pixbuf,
+  gettext,
+  git,
+  glib,
+  gtk4,
+  gtksourceview5,
+  libadwaita,
+  meson,
+  ninja,
+  openssl,
+  pandoc,
+  pkg-config,
+  polkit,
+  rustc,
+  rustPlatform,
+  vte-gtk4,
+  wrapGAppsHook4,
+  adwaita-icon-theme,
 }:
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   pname = "nixos-conf-editor";
   version = "0.1.2";
 
@@ -42,7 +43,8 @@ stdenv.mkDerivation rec {
     pkg-config
     polkit
     wrapGAppsHook4
-  ] ++ (with rustPlatform; [
+  ]
+  ++ (with rustPlatform; [
     cargo
     cargoSetupHook
     rustc
@@ -51,7 +53,7 @@ stdenv.mkDerivation rec {
   buildInputs = [
     gdk-pixbuf
     glib
-    gnome.adwaita-icon-theme
+    adwaita-icon-theme
     gtk4
     gtksourceview5
     libadwaita
