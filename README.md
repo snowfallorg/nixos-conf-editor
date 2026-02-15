@@ -48,7 +48,7 @@ let
     repo = "nixos-conf-editor";
     rev = "0.1.2";
     sha256 = "sha256-/ktLbmF1pU3vFHeGooDYswJipNE2YINm0WpF9Wd1gw8=";
-  }) {};
+  });
 in
 ```
 Packages:
@@ -56,7 +56,7 @@ Packages:
 ```nix
 environment.systemPackages =
 with pkgs; [
-  nixos-conf-editor
+  nixos-conf-editor.packages.${stdenv.hostPlatform.system}.nixos-conf-editor
   # rest of your packages
 ];
 ```
